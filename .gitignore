@@ -13,6 +13,7 @@
 *.exe
 *.ilk
 *.pdb
+*.idb
 
 [Dd]ebugPublic/
 [Rr]elease/
