@@ -14,7 +14,8 @@ void ListenForPackets(RakPeerInterface* _peer);
 enum GameMessages
 {
 	ID_TO_CLIENT_MESSAGE = ID_USER_PACKET_ENUM + 1,
-	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1
+	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1,
+	ID_CLIENT_DISCONNECT = ID_TO_CLIENT_MESSAGE + 2
 };
 
 int main()
@@ -84,7 +85,7 @@ void ListenForPackets(RakPeerInterface* _peer)
 					RakNet::BitStream bsIn(packet->data,packet->length,false);
 					bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 					bsIn.Read(rs);
-					printf("%s\n", rs.C_String());
+					printf("Message recieved and broadcasted.\n");
 					
 					RakNet::BitStream bsOut;
 					bsOut.Write((RakNet::MessageID)ID_TO_CLIENT_MESSAGE);
@@ -100,6 +101,10 @@ void ListenForPackets(RakPeerInterface* _peer)
 					bsIn.Read(rs);
 					printf("%s\n", rs.C_String());
 				}
+			case ID_CLIENT_DISCONNECT:
+				_peer->CloseConnection(packet->systemAddress, true);
+				printf("Client closed connection\n");
+				break;
 			default:
 				printf("Message with identifier %i has arrived.\n", packet->data[0]);
 				break;

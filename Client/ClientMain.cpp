@@ -14,7 +14,7 @@ AddressOrGUID hostAddress;
 bool isListening = false;
 SystemAddress addressList[10];
 char name[30];
-char spacer[3] = ": ";
+char spacer[8] = " says: ";
 void ListenForPackets(RakPeerInterface* _peer);
 void ShutdownClient(RakPeerInterface* _peer);
 void GetConnectionList(RakPeerInterface* _peer);
@@ -22,7 +22,8 @@ void GetConnectionList(RakPeerInterface* _peer);
 enum GameMessages
 {
 	ID_TO_CLIENT_MESSAGE = ID_USER_PACKET_ENUM + 1,
-	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1
+	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1,
+	ID_CLIENT_DISCONNECT = ID_TO_CLIENT_MESSAGE + 2
 };
 
 int main()
@@ -53,15 +54,23 @@ int main()
 	// New while loop for handling input
 	while (str[0]!='q')
 	{
-		printf("Message: ");
+		printf("Send: ");
 		gets_s(str);
 		BitStream bsOut;
 		char message[512];
-		strcpy(message, name);
-		strcat(message, spacer);
-		strcat(message, str);
-		bsOut.Write((RakNet::MessageID)ID_TO_SERVER_MESSAGE);
-		bsOut.Write(message);
+		// If this is a quit missage
+		if (str[0] == 'q' && str[1] == 'u' && str[2] == 'i' && str[3] == 't')
+		{
+			bsOut.Write((RakNet::MessageID)ID_CLIENT_DISCONNECT);
+		}
+		else
+		{
+			strcpy(message, name);
+			strcat(message, spacer);
+			strcat(message, str);
+			bsOut.Write((RakNet::MessageID)ID_TO_SERVER_MESSAGE);
+			bsOut.Write(message);
+		}
 		peer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,addressList[0],false);
 	}
 
@@ -121,6 +130,15 @@ void ListenForPackets(RakPeerInterface* _peer)
 				break;
 			case ID_CONNECTION_LOST:
 				printf("Connection lost.\n");
+				break;
+			case ID_TO_CLIENT_MESSAGE:
+				{
+					RakNet::RakString rs;
+					RakNet::BitStream bsIn(packet->data,packet->length,false);
+					bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+					bsIn.Read(rs);
+					printf("\n%s\nSend: ", rs.C_String());
+				}
 				break;
 			default:
 				printf("Message with identifier %i has arrived.\n", packet->data[0]);
