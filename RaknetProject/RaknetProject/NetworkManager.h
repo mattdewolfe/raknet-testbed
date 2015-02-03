@@ -20,19 +20,22 @@ enum GameMessages
 	ID_TO_CLIENT_MESSAGE = ID_USER_PACKET_ENUM + 1,
 	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1,
 	ID_CLIENT_DISCONNECT = ID_TO_CLIENT_MESSAGE + 2,
-	ID_REPLY_CHOICE = ID_TO_CLIENT_MESSAGE + 3
+	ID_REPLY_CHOICE = ID_TO_CLIENT_MESSAGE + 3, 
+	ID_READY_TO_PLAY = ID_TO_CLIENT_MESSAGE + 4 
 };
 
 class NetworkManager
 {
 public:
 	NetworkManager();
-	~NetworkManager() {}
+	~NetworkManager() { Destroy(); }
 
 	// Fire up raknet with apps and connection settings
-	void Init(bool isHost);
+	void Init();
 	// Connect to a remote
-	bool EstablishConnection();
+	bool EstablishConnection(char* _ip  = "127.0.0.1");
+	// List IP addresses
+	void ListIP();
 	// Packet checking is done here
 	void CheckPackets();
 	// Request the networking fire off a message
