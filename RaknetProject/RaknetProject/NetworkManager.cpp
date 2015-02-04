@@ -1,12 +1,14 @@
 #include "NetworkManager.h"
 
-NetworkManager::NetworkManager() : rakPeer(0), bIsHost(false) ,bIsMaster(false)
+NetworkManager::NetworkManager() : rakPeer(0), bIsHost(false) ,bGameStarted(false)
 {
 	printf("Networking enabled.\n");
 }
 
-void NetworkManager::Init()
+void NetworkManager::Init(bool _isHost)
 {
+	bIsHost = _isHost;
+
 	rakPeer = RakPeerInterface::GetInstance();
 	
 	rakPeer->AttachPlugin(&readyEventPlugin);
@@ -40,11 +42,19 @@ void NetworkManager::Destroy()
 	}
 }
 
-bool NetworkManager::EstablishConnection(char* _ip)
+bool NetworkManager::EstablishConnection(const char _ip[])
 {
-	ConnectionAttemptResult car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+	ConnectionAttemptResult car;
+	if (bIsHost == true)
+	{
+		car = rakPeer->Connect("127.0.0.1", PORT, 0, 0, 0);
+	}
+	else
+	{
+		car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
-	printf("Connection establisted with %s.\n", _ip);
+	printf("Attempting to connect to %s...\n", _ip);
 	return true;
 }
 
@@ -60,13 +70,14 @@ void NetworkManager::NetworkMessage(GameMessages _messageType, int _answerValue)
 {
 	switch (_messageType)
 	{
-		case ID_READY_TO_PLAY:
-			readyEventPlugin.SetEvent(ID_READY_TO_PLAY,true);
-			break;
-	
 		default:
 			break;
 	}
+}
+
+void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
+{
+	readyEventPlugin.SetEvent(_event,_isReady);
 }
 
 // Pole packets and take action as needed
@@ -80,68 +91,72 @@ void NetworkManager::CheckPackets()
 			switch (p->data[0])
 			{
 			case ID_NEW_INCOMING_CONNECTION:
-				printf("NETWORK: ID_NEW_INCOMING_CONNECTION\n");
+				printf(": Network : ID_NEW_INCOMING_CONNECTION\n");
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
-				printf("NETWORK: ID_CONNECTION_REQUEST_ACCEPTED\n");
+				printf(": Network : ID_CONNECTION_REQUEST_ACCEPTED\n");
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
-				system("cls");
-				printf("NETWORK:  \\('^')/ Let the game being!\n", p->guid.ToString());
+				if (bGameStarted == false)
+				{
+					system("cls");
+					printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
+					bGameStarted = true;
+				}
 				break;
 
 			case ID_READY_EVENT_SET:
-				printf("NETWORK: Got ID_READY_EVENT_SET from %s\n", p->guid.ToString());
+				printf(": Network : Got ID_READY_EVENT_SET from %s\n", p->guid.ToString());
 				break;
 
 			case ID_READY_EVENT_UNSET:
-				printf("NETWORK: Got ID_READY_EVENT_UNSET from %s\n", p->guid.ToString());
+				printf(": Network : Got ID_READY_EVENT_UNSET from %s\n", p->guid.ToString());
 				break;
 
 			case ID_DISCONNECTION_NOTIFICATION:
 				// Connection lost normally
-				printf("NETWORK: ID_DISCONNECTION_NOTIFICATION\n");
+				printf(": Network : ID_DISCONNECTION_NOTIFICATION\n");
 				break;
 			case ID_ALREADY_CONNECTED:
 				// Connection lost normally
-				printf("NETWORK: ID_ALREADY_CONNECTED with guid %" PRINTF_64_BIT_MODIFIER "u\n", p->guid);
+				printf(": Network : ID_ALREADY_CONNECTED with guid %" PRINTF_64_BIT_MODIFIER "u\n", p->guid);
 				break;
 			case ID_INCOMPATIBLE_PROTOCOL_VERSION:
-				printf("NETWORK: ID_INCOMPATIBLE_PROTOCOL_VERSION\n");
+				printf(": Network : ID_INCOMPATIBLE_PROTOCOL_VERSION\n");
 				break;
 			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf("NETWORK: ID_REMOTE_DISCONNECTION_NOTIFICATION\n"); 
+				printf(": Network : ID_REMOTE_DISCONNECTION_NOTIFICATION\n"); 
 				break;
 			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf("NETWORK: ID_REMOTE_CONNECTION_LOST\n");
+				printf(": Network : ID_REMOTE_CONNECTION_LOST\n");
 				break;
 			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf("NETWORK: ID_REMOTE_NEW_INCOMING_CONNECTION\n");
+				printf(": Network : ID_REMOTE_NEW_INCOMING_CONNECTION\n");
 				break;
 			case ID_CONNECTION_BANNED: // Banned from this server
-				printf("NETWORK: We are banned from this server.\n");
+				printf(": Network : We are banned from this server.\n");
 				break;			
 			case ID_CONNECTION_ATTEMPT_FAILED:
-				printf("NETWORK: Connection attempt failed\n");
+				printf(": Network : Connection attempt failed\n");
 				break;
 			case ID_NO_FREE_INCOMING_CONNECTIONS:
 				// Sorry, the server is full.  I don't do anything here but
 				// A real app should tell the user
-				printf("NETWORK: ID_NO_FREE_INCOMING_CONNECTIONS\n");
+				printf(": Network : ID_NO_FREE_INCOMING_CONNECTIONS\n");
 				break;
 			case ID_INVALID_PASSWORD:
-				printf("NETWORK: ID_INVALID_PASSWORD\n");
+				printf(": Network : ID_INVALID_PASSWORD\n");
 				break;
 			case ID_CONNECTION_LOST:
 				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
 				// terminated
-				printf("NETWORK: ID_CONNECTION_LOST\n");
+				printf(": Network : ID_CONNECTION_LOST\n");
 				break;
 			case ID_CONNECTED_PING:
 			case ID_UNCONNECTED_PING:
-				printf("NETWORK: Ping from %s\n", p->systemAddress.ToString(true));
+				printf(": Network : Ping from %s\n", p->systemAddress.ToString(true));
 				break;
 			}
 
