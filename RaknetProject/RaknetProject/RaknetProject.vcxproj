@@ -39,7 +39,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(SolutionDir)..\Source\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\Source\;$(MSBuildProjectDirectory)\include\;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)..\Lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -69,11 +69,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="NetworkManager.h" />
+    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="src\NetworkManager.cpp" />
+    <ClCompile Include="src\XMLScriptManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="NetworkManager.cpp" />
-    <ClCompile Include="Source.cpp" />
+    <ClInclude Include="include\NetworkManager.h" />
+    <ClInclude Include="include\XMLScriptManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
