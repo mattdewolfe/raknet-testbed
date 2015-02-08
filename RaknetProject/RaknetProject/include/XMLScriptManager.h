@@ -30,15 +30,14 @@ public:
 	void Shutdown();
 	bool LoadScript(const char* _fileName);
 
-private:
-	// Set a variable by passing in the variable name in script and the variable itself
-	// The variable must be passed in to determine type to return
+	// Get a variable by passing in the variable name in script
 	// @Parem - node to look under, attribute name, variable type to return
-	float GetVariableFromScript(char* _node, char* _name, float *var);
-	int GetVariableFromScript(char* _node, char* _name, int *var);
-	bool GetVariableFromScript(char* _node, char* _name, bool *var);
-	std::string GetVariableFromScript(char* _node, char* _name, std::string *var);
+	float GetFloatVariableFromScript(char* _node, char* _name);
+	int GetIntVariableFromScript(char* _node, char* _name);
+	bool GetBoolVariableFromScript(char* _node, char* _name);
+	std::string GetStringVariableFromScript(char* _node, char* _name);
 	
+private:
 	/* For further functionilty, we could look into changing the variables stored in our scripts
 	* from inside our engine, add additional component parameters to be created via script, 
 	* or add in the ability to run functions based entirely on scripting 

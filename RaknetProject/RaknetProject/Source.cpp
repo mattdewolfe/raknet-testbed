@@ -3,8 +3,11 @@
 #include <RakThread.h>
 #include <string>
 #include "NetworkManager.h"
+#include "XMLScriptManager.h"
 
 NetworkManager* networkManager;
+XMLScriptManager* xmlManager;
+
 void UpdateNetwork();
 // Ask player to enter an IP or host a game, then call necessary Raknet function
 void JoinOrHostGame();
@@ -19,6 +22,11 @@ std::string playerName;
 int main(void)
 {
 	networkManager = new NetworkManager();
+	xmlManager = new XMLScriptManager();
+	xmlManager->Init();
+	std::string temp;
+	temp = xmlManager->GetStringVariableFromScript("questions", "q0");
+	std::cout << temp << "\n";
 	GetPlayerName();
 	JoinOrHostGame();
 	// Start up a seperate thread for network updates

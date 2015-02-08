@@ -5,7 +5,7 @@ XMLScriptManager::XMLScriptManager()
 
 }
 
-float XMLScriptManager::GetVariableFromScript(char* _node, char* _name, float* var)
+float XMLScriptManager::GetFloatVariableFromScript(char* _node, char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -37,7 +37,7 @@ float XMLScriptManager::GetVariableFromScript(char* _node, char* _name, float* v
 	return total;
 }
 
-int XMLScriptManager::GetVariableFromScript(char* _node, char* _name, int* var)
+int XMLScriptManager::GetIntVariableFromScript(char* _node, char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -47,7 +47,7 @@ int XMLScriptManager::GetVariableFromScript(char* _node, char* _name, int* var)
 	return ret;
 }
 
-bool XMLScriptManager::GetVariableFromScript(char* _node, char* _name, bool* var)
+bool XMLScriptManager::GetBoolVariableFromScript(char* _node, char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -65,7 +65,7 @@ bool XMLScriptManager::GetVariableFromScript(char* _node, char* _name, bool* var
 	}
 }
 
-std::string XMLScriptManager::GetVariableFromScript(char* _node, char* _name, std::string* var)
+std::string XMLScriptManager::GetStringVariableFromScript(char* _node, char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -77,7 +77,7 @@ std::string XMLScriptManager::GetVariableFromScript(char* _node, char* _name, st
 
 bool XMLScriptManager::Init()
 {
-	LoadScript("scripts\\TestXML.xml");
+	LoadScript("xml\\CardsAgainstHumanity.xml");
 	return true;
 }
 
