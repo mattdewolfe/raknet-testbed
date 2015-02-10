@@ -1,5 +1,4 @@
-#ifndef NETWORK_MANAGER_H
-#define NETWORK_MANAGER_H
+#pragma once
 
 #include <assert.h>
 #include "GetTime.h"
@@ -14,6 +13,7 @@
 #include "ConnectionGraph2.h"
 
 using namespace RakNet;
+class GameManager;
 
 enum GameMessages
 {
@@ -21,13 +21,15 @@ enum GameMessages
 	ID_TO_SERVER_MESSAGE = ID_TO_CLIENT_MESSAGE + 1,
 	ID_CLIENT_DISCONNECT = ID_TO_CLIENT_MESSAGE + 2,
 	ID_REPLY_CHOICE = ID_TO_CLIENT_MESSAGE + 3, 
-	ID_READY_TO_PLAY = ID_TO_CLIENT_MESSAGE + 4 
+	ID_READY_TO_PLAY = ID_TO_CLIENT_MESSAGE + 4, 
+	ID_DEAL_CARD_TO_PLAYER =  ID_TO_CLIENT_MESSAGE + 5,
+	ID_SEND_ANSWER_CARD =  ID_TO_CLIENT_MESSAGE + 6
 };
 
 class NetworkManager
 {
 public:
-	NetworkManager();
+	NetworkManager(GameManager* _game);
 	~NetworkManager() { Destroy(); }
 
 	// Fire up raknet with apps and connection settings
@@ -39,19 +41,35 @@ public:
 	// Packet checking is done here
 	void CheckPackets();
 	// Request the networking fire off a message
-	void NetworkMessage(GameMessages _messageType, int _answerValue = 0);
+	void NetworkMessage(GameMessages _messageType, int _cardValue = -1);
+	// Request the networking send a peer to peer message
+	// Takes in message type, addess of target system, and value of card being passed (if card)
+	void PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue = -1);
 	// Set an event flag for this client
 	void SetEventState(GameMessages _event, bool _isReady);
+	// Access the list of machines connected to the host
+	SystemAddress GetConnectedMachine(int _playerNum);
+	// Get number of systems connected
+	unsigned short GetNumberOfConnections() { return numberOfSystems; }
 	// Close and shutdown the servers
 	void Destroy();
-
+	
 	bool IsHost() { return bIsHost; }
 
+	// Queue of functions and parameters to be called
+	// This is added to inside network update and called
+	// outside of it for concurrency issues
+//	std::vector<void (*func)(int), int> queue;
 private:
-
 	static const unsigned int MAX_CONNECTIONS = 8;
+	static const unsigned int MIN_CONNECTIONS = 3;
 	static const unsigned int PORT = 60000;
 
+	// List of addresses connected to host
+	SystemAddress remoteSystems[MAX_CONNECTIONS];
+	unsigned short numberOfSystems;
+	GameManager* game;
+	
 	bool bGameStarted;
 	bool bIsHost;
 
@@ -62,5 +80,3 @@ private:
 	ConnectionGraph2 connectedGraph2;
 	
 };
-
-#endif

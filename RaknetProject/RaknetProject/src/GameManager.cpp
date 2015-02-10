@@ -6,7 +6,7 @@ GameManager::GameManager(void) :
 {
 	xmlManager = new XMLScriptManager();
 	xmlManager->Init();
-	networkManager = new NetworkManager();
+	networkManager = new NetworkManager(this);
 }
 
 GameManager::~GameManager(void)
@@ -69,12 +69,43 @@ int GameManager::RemoveCardFromHand(int _choice)
 	return -1;
 }
 
+void GameManager::DealCardsToClient()
+{
+
+}
+
 // Clear screen and display information to start the round
 void GameManager::StartRound()
 {
 	system("cls");
 	std::cout << " -- A new round has begun. --\n";
 	std::cout << "You have the following cards. \n";
+	// If this is the host, deal cards to each player
+	if (networkManager->IsHost() == true)
+	{
+		// First deal 3 cards to self from back of answer vector
+		for (int i = 0; i < 3; i++)
+		{
+			AddCardToHand(answerDeck[answerDeck.size()]);
+			answerDeck.pop_back();
+		}
+		// Next do the same for each connected system
+		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+		{
+			// Each system needs 3 cards
+			for (int i = 0; i < 3; i++)
+			{
+				// Send a peer to peer message to a specific host
+				// get machine address from manager
+				// and get card value from top of card answer deck
+				networkManager->PeerToPeerMessage(ID_DEAL_CARD_TO_PLAYER,
+					networkManager->GetConnectedMachine(i), 
+					answerDeck[answerDeck.size()]);
+				answerDeck.pop_back();
+			}
+		}
+		
+	}
 	// Iterate through players cards and display them at the start of a round
 	for (int i = 0; i < cards.size(); i++)
 	{
@@ -129,18 +160,39 @@ void GameManager::Init()
 	}
 	networkUpdates = new std::thread(&GameManager::UpdateNetwork, this);
 	networkUpdates->detach();
-
+	// If this is the host, we need to shuffle decks of cards
+	if (networkManager->IsHost() == true)
+	{
+		ShuffleDecks();
+	}
 	// Wait for a key press
 	std::cout << ": " << playerName << " : Press Enter when you are ready to play.\n";
 	getchar();
 	// Once hit, let the other clients know this player is ready
 	networkManager->SetEventState(GameMessages::ID_READY_TO_PLAY, true);
-	AddCardToHand(0);
-	AddCardToHand(1);
-	StartRound();
-
 }
 
+void GameManager::ShuffleDecks()
+{
+	// Get size of question deck
+	int questionSize = xmlManager->GetIntVariableFromScript("questions", "questionCount");
+	// Add ints to deck based on size
+	for (int i = 0; i < questionSize; i++)
+	{
+		questionDeck.push_back(i);
+	}
+	// Repeat this for the answer deck
+	int answerSize = xmlManager->GetIntVariableFromScript("answers", "answerCount");
+	for (int i = 0; i < answerSize; i++)
+	{
+		answerDeck.push_back(i);
+	}
+
+	// Shuffle both decks
+	std::random_shuffle(questionDeck.begin(), questionDeck.end());
+	std::random_shuffle(answerDeck.begin(), answerDeck.end());
+
+}
 void GameManager::UpdateNetwork()
 {
 	networkManager->CheckPackets();

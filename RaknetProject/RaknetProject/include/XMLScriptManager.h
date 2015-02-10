@@ -1,5 +1,4 @@
-#ifndef XML_SCRIPT_MANAGER_H
-#define XML_SCRIPT_MANAGER_H
+#pragma once
 
 #include <iostream>
 #include <sstream> 
@@ -40,5 +39,3 @@ private:
 	rapidxml::xml_document<> doc;
 	rapidxml::file<>* xmlFile;
 };
-
-#endif

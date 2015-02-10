@@ -1,9 +1,11 @@
 #include "NetworkManager.h"
+#include "GameManager.h"
 
-NetworkManager::NetworkManager() 
+NetworkManager::NetworkManager(GameManager* _game) 
 	: rakPeer(0), 
 	bIsHost(false),
-	bGameStarted(false)
+	bGameStarted(false),
+	game(_game)
 
 {
 	printf("Networking enabled.\n");
@@ -70,9 +72,17 @@ void NetworkManager::ListIP()
 		printf("LocalIP: %s\n",rakPeer->GetLocalIP(i));
 	}
 }
-
+// Send a message to a specific machine
+void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue)
+{
+	switch (_messageType)
+	{
+		default:
+			break;
+	}
+}
 // Fire off a message to connected machines
-void NetworkManager::NetworkMessage(GameMessages _messageType, int _answerValue)
+void NetworkManager::NetworkMessage(GameMessages _messageType, int _cardValue)
 {
 	switch (_messageType)
 	{
@@ -86,6 +96,22 @@ void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
 	readyEventPlugin.SetEvent(_event,_isReady);
 }
 
+// Get a specific system address for peer to peer
+SystemAddress NetworkManager::GetConnectedMachine(int _playerNum)
+{
+	// First off grab host address
+	SystemAddress temp = rakPeer->GetSystemAddressFromIndex(0);
+	// Next get number of systems, and try to grab 
+	// the desired system address (ensuring within bounds of connected systems)
+	rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
+	if (_playerNum < numberOfSystems)
+	{
+		temp = rakPeer->GetSystemAddressFromIndex(_playerNum);
+	}
+	// Return result
+	return temp;
+}
+
 // Pole packets and take action as needed
 void NetworkManager::CheckPackets()
 {
@@ -94,8 +120,18 @@ void NetworkManager::CheckPackets()
 		Packet *p = rakPeer->Receive();
 		if (p)
 		{
+			RakNet::BitStream bitStream(p->data, p->length, false);
+			int cardVal;
 			switch (p->data[0])
 			{
+			// Custom defined events
+			// When receiving a card from the host
+			case ID_DEAL_CARD_TO_PLAYER:
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(cardVal);
+				game->AddCardToHand(cardVal);
+				break;
+			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
 				printf(": Network : ID_NEW_INCOMING_CONNECTION\n");
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
@@ -109,7 +145,14 @@ void NetworkManager::CheckPackets()
 				{
 					system("cls");
 					printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
+					Sleep(35);
+					game->StartRound();
 					bGameStarted = true;
+					if (bIsHost)
+					{
+						// Store number of connections
+						rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
+					}
 				}
 				break;
 

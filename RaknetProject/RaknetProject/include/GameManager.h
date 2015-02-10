@@ -1,11 +1,11 @@
-#ifndef GAME_MANAGER_H
-#define GAME_MANAGER_H
+#pragma once
 
 #include <vector>
 #include <iostream>
 #include <string>
 #include <RakThread.h>
 #include <thread>
+#include <algorithm>
 #include "XMLScriptManager.h"
 #include "NetworkManager.h"
 
@@ -26,7 +26,6 @@ enum GAME_STATE
 class GameManager
 {
 public:
-
 
 	GameManager(void);
 	~GameManager(void);
@@ -55,6 +54,7 @@ private:
 	XMLScriptManager* xmlManager;
 	// Networking manager, handles packets
 	NetworkManager* networkManager;
+
 	std::thread* networkUpdates;
 	void UpdateNetwork();
 
@@ -68,7 +68,9 @@ private:
 	// Question and Answer decks, only accessed by master/host
 	std::vector<int> answerDeck;
 	std::vector<int> questionDeck;
-};
 
-#endif
+	// Shuffle decks of cards before beginning play
+	void ShuffleDecks();
+	void DealCardsToClient();
+};
 

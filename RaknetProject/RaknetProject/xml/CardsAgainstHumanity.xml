@@ -1,5 +1,6 @@
 <cards>
   <questions>
+    <questionCount>7</questionCount>
     <q0>What did I bring back from Mexico?</q0>
     <q1>What ended my last relationship?</q1>
     <q2>___? There's an app for that.</q2>
@@ -9,6 +10,7 @@
     <q6>___. That's how I want to die.</q6>
   </questions>
   <answers>
+    <answerCount>21</answerCount>
     <a0>Powerful thighs.</a0>
     <a1>Crippling debt.</a1>
     <a2>AIDS.</a2>
