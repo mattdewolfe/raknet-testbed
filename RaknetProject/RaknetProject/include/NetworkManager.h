@@ -45,7 +45,10 @@ public:
 	// Close and shutdown the servers
 	void Destroy();
 
+	bool IsHost() { return bIsHost; }
+
 private:
+
 	static const unsigned int MAX_CONNECTIONS = 8;
 	static const unsigned int PORT = 60000;
 
@@ -57,8 +60,7 @@ private:
 
 	FullyConnectedMesh2 FCM2;
 	ConnectionGraph2 connectedGraph2;
-
-protected:
 	
 };
+
 #endif

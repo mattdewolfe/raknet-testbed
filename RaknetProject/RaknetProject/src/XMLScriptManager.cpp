@@ -5,7 +5,7 @@ XMLScriptManager::XMLScriptManager()
 
 }
 
-float XMLScriptManager::GetFloatVariableFromScript(char* _node, char* _name)
+float XMLScriptManager::GetFloatVariableFromScript(char* _node, const char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -20,7 +20,6 @@ float XMLScriptManager::GetFloatVariableFromScript(char* _node, char* _name)
 			// If we find a second decimal place, break and ignore further values
 			if (afterDecimal == true)
 			{
-				DBOUT("XML: Read float: Terminated early due to second decimal.");
 				break;
 			}
 			afterDecimal = true;
@@ -33,21 +32,19 @@ float XMLScriptManager::GetFloatVariableFromScript(char* _node, char* _name)
 				total += (float)(ret[i] - '0')/10;
 		}
 	}
-	DBOUT("XML: Read float: " << total);
 	return total;
 }
 
-int XMLScriptManager::GetIntVariableFromScript(char* _node, char* _name)
+int XMLScriptManager::GetIntVariableFromScript(char* _node, const char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
 	rapidxml::xml_node<>* targetAttr = targetNode->first_node(_name);
 	int ret = std::stoi(targetAttr->value());
-	DBOUT("XML: Read int: " << ret);
 	return ret;
 }
 
-bool XMLScriptManager::GetBoolVariableFromScript(char* _node, char* _name)
+bool XMLScriptManager::GetBoolVariableFromScript(char* _node, const char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
@@ -55,23 +52,20 @@ bool XMLScriptManager::GetBoolVariableFromScript(char* _node, char* _name)
 	char* attr = targetAttr->value();
 	if (attr[0] == 't' || attr[0] == 'T')
 	{ 
-		DBOUT("XML: Read bool: true");
 		return true;
 	}
 	else
 	{
-		DBOUT("XML: Read bool: false");
 		return false;
 	}
 }
 
-std::string XMLScriptManager::GetStringVariableFromScript(char* _node, char* _name)
+std::string XMLScriptManager::GetStringVariableFromScript(char* _node, const char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();
 	rapidxml::xml_node<>* targetNode = parent->first_node(_node);
 	rapidxml::xml_node<>* targetAttr = targetNode->first_node(_name);
 	std::string ret = targetAttr->value();
-	DBOUT("XML: Read string: " << targetAttr->value());
 	return ret;
 }
 
@@ -88,7 +82,6 @@ bool XMLScriptManager::LoadScript(const char* _fileName)
 	{
 		doc.parse<0>(xmlFile->data());
 	}
-	DBOUT( "XML: Loaded " << doc.first_node()->name() << " script." );
 	return false;
 }
 

@@ -1,6 +1,10 @@
 #include "NetworkManager.h"
 
-NetworkManager::NetworkManager() : rakPeer(0), bIsHost(false) ,bGameStarted(false)
+NetworkManager::NetworkManager() 
+	: rakPeer(0), 
+	bIsHost(false),
+	bGameStarted(false)
+
 {
 	printf("Networking enabled.\n");
 }
@@ -62,7 +66,9 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 void NetworkManager::ListIP()
 {
 	for(unsigned int i = 0; i < rakPeer->GetNumberOfAddresses(); ++i)
+	{
 		printf("LocalIP: %s\n",rakPeer->GetLocalIP(i));
+	}
 }
 
 // Fire off a message to connected machines

@@ -1,8 +1,6 @@
 #ifndef XML_SCRIPT_MANAGER_H
 #define XML_SCRIPT_MANAGER_H
 
-#include <assert.h>
-#include <Windows.h>
 #include <iostream>
 #include <sstream> 
 #include <string>
@@ -10,14 +8,6 @@
 #include "rapidXML\rapidxml_iterators.hpp"
 #include "rapidXML\rapidxml_print.hpp"
 #include "rapidXML\rapidxml_utils.hpp"
-
-// Macro for tracing event data names into output window
-#define DBOUT( s )            \
-{                             \
-   std::wostringstream os_;    \
-   os_ << s << "\n";                   \
-   OutputDebugStringW( os_.str().c_str() );  \
-}
 
 class XMLScriptManager
 {
@@ -32,10 +22,10 @@ public:
 
 	// Get a variable by passing in the variable name in script
 	// @Parem - node to look under, attribute name, variable type to return
-	float GetFloatVariableFromScript(char* _node, char* _name);
-	int GetIntVariableFromScript(char* _node, char* _name);
-	bool GetBoolVariableFromScript(char* _node, char* _name);
-	std::string GetStringVariableFromScript(char* _node, char* _name);
+	float GetFloatVariableFromScript(char* _node, const char* _name);
+	int GetIntVariableFromScript(char* _node, const char* _name);
+	bool GetBoolVariableFromScript(char* _node, const char* _name);
+	std::string GetStringVariableFromScript(char* _node, const char* _name);
 	
 private:
 	/* For further functionilty, we could look into changing the variables stored in our scripts
