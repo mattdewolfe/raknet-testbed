@@ -14,7 +14,7 @@ NetworkManager::NetworkManager(GameManager* _game)
 void NetworkManager::Init(bool _isHost)
 {
 	bIsHost = _isHost;
-
+	printf("getting rakpeer");
 	rakPeer = RakPeerInterface::GetInstance();
 	
 	rakPeer->AttachPlugin(&readyEventPlugin);
@@ -75,11 +75,10 @@ void NetworkManager::ListIP()
 // Send a message to a specific machine
 void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue)
 {
-	switch (_messageType)
-	{
-		default:
-			break;
-	}
+	RakNet::BitStream bsOut;
+	bsOut.Write(_messageType);
+	bsOut.Write(_cardValue);
+	rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,_address,false);
 }
 // Fire off a message to connected machines
 void NetworkManager::NetworkMessage(GameMessages _messageType, int _cardValue)
@@ -122,6 +121,7 @@ void NetworkManager::CheckPackets()
 		{
 			RakNet::BitStream bitStream(p->data, p->length, false);
 			int cardVal;
+			GameMessages messageType;
 			switch (p->data[0])
 			{
 			// Custom defined events
@@ -141,18 +141,31 @@ void NetworkManager::CheckPackets()
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
-				if (bGameStarted == false)
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(messageType);
+				// Act depending on ready event type
+				switch(messageType)
 				{
-					system("cls");
-					printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
-					Sleep(35);
-					game->StartRound();
-					bGameStarted = true;
-					if (bIsHost)
+				// Everyone is ready to play
+				case ID_READY_TO_PLAY:
+					if (bGameStarted == false)
 					{
-						// Store number of connections
-						rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
+						system("cls");
+						printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
+						Sleep(35);
+						game->StartRound();
+						bGameStarted = true;
+						if (bIsHost)
+						{
+							// Store number of connections
+							rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
+						}
 					}
+					break;
+				// Everyone has submitted an answer card
+				case ID_SEND_ANSWER_CARD:
+					
+					break;
 				}
 				break;
 

@@ -2,7 +2,9 @@
 
 GameManager::GameManager(void) :
 	state(LOADING),
-	bIsHostClient(false)
+	bIsHostClient(false),
+	topQuestionCard(0),
+	topAnswerCard(0)
 {
 	xmlManager = new XMLScriptManager();
 	xmlManager->Init();
@@ -86,22 +88,22 @@ void GameManager::StartRound()
 		// First deal 3 cards to self from back of answer vector
 		for (int i = 0; i < 3; i++)
 		{
-			AddCardToHand(answerDeck[answerDeck.size()]);
-			answerDeck.pop_back();
+			AddCardToHand(answerDeck[topAnswerCard%answerDeck.size()]);
+			topAnswerCard++;
 		}
 		// Next do the same for each connected system
 		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
 		{
 			// Each system needs 3 cards
-			for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 3; j++)
 			{
 				// Send a peer to peer message to a specific host
 				// get machine address from manager
 				// and get card value from top of card answer deck
 				networkManager->PeerToPeerMessage(ID_DEAL_CARD_TO_PLAYER,
 					networkManager->GetConnectedMachine(i), 
-					answerDeck[answerDeck.size()]);
-				answerDeck.pop_back();
+					answerDeck[topAnswerCard%answerDeck.size()]);
+				topAnswerCard++;
 			}
 		}
 		

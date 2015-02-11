@@ -6,7 +6,6 @@ int main(void)
 {
 	gameManager = new GameManager();
 	gameManager->Init();	
-		
 	// After manager is started, just keep passing info to it
 	char ch=0;
 	while (1)

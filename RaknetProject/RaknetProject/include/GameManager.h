@@ -68,6 +68,8 @@ private:
 	// Question and Answer decks, only accessed by master/host
 	std::vector<int> answerDeck;
 	std::vector<int> questionDeck;
+	// Store current index of array
+	int topAnswerCard, topQuestionCard;
 
 	// Shuffle decks of cards before beginning play
 	void ShuffleDecks();
