@@ -46,6 +46,8 @@ public:
 	void Shutdown();
 	// Ask the player to enter their name
 	void RequestPlayerName();
+	// Print out users cards at top of screen
+	void DisplayCards();
     // Return the player name - used with server messages
 	std::string GetPlayerName() { return playerName; }
 

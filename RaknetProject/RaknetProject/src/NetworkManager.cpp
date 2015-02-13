@@ -83,11 +83,10 @@ void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress 
 // Fire off a message to connected machines
 void NetworkManager::NetworkMessage(GameMessages _messageType, int _cardValue)
 {
-	switch (_messageType)
-	{
-		default:
-			break;
-	}
+	RakNet::BitStream bsOut;
+	bsOut.Write(_messageType);
+	bsOut.Write(_cardValue);
+	rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
 }
 
 void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
@@ -127,17 +126,17 @@ void NetworkManager::CheckPackets()
 			// Custom defined events
 			// When receiving a card from the host
 			case ID_DEAL_CARD_TO_PLAYER:
-				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.IgnoreBytes(sizeof(GameMessages));
 				bitStream.Read(cardVal);
 				game->AddCardToHand(cardVal);
 				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
-				printf(": Network : ID_NEW_INCOMING_CONNECTION\n");
+				printf(": Network : A Player is joining...\n");
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
-				printf(": Network : ID_CONNECTION_REQUEST_ACCEPTED\n");
+				printf(": Network : Joining game...\n");
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
@@ -153,13 +152,13 @@ void NetworkManager::CheckPackets()
 						system("cls");
 						printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
 						Sleep(35);
-						game->StartRound();
 						bGameStarted = true;
 						if (bIsHost)
 						{
 							// Store number of connections
 							rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
 						}
+						game->StartRound();
 					}
 					break;
 				// Everyone has submitted an answer card
@@ -170,11 +169,11 @@ void NetworkManager::CheckPackets()
 				break;
 
 			case ID_READY_EVENT_SET:
-				printf(": Network : Got ID_READY_EVENT_SET from %s\n", p->guid.ToString());
+				printf(": Network : %s is ready.\n", p->guid.ToString());
 				break;
 
 			case ID_READY_EVENT_UNSET:
-				printf(": Network : Got ID_READY_EVENT_UNSET from %s\n", p->guid.ToString());
+				printf(": Network : %s is not ready.\n", p->guid.ToString());
 				break;
 
 			case ID_DISCONNECTION_NOTIFICATION:

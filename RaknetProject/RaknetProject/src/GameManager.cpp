@@ -16,6 +16,21 @@ GameManager::~GameManager(void)
 
 }
 
+void GameManager::DisplayCards()
+{
+	system("cls");
+	std::cout << "You have the following cards. \n";
+	// Iterate through players cards and display them at the start of a round
+	for (int i = 0; i < cards.size(); i++)
+	{
+		std::string cardInfo = "a";
+		cardInfo += std::to_string(cards[i]);
+		const char *cstr = cardInfo.c_str();
+		std::string card = xmlManager->GetStringVariableFromScript("answers", cstr);
+		std::cout << i+1 << ": " << card << "\n";
+	}
+}
+
 // Should loop listening for key input and calling function as needed
 void GameManager::KeyPress(const char _ch)
 {
@@ -42,7 +57,6 @@ void GameManager::KeyPress(const char _ch)
 		if (bIsHostClient == true)
 		{
 			// Then get an answer for the best card
-
 		}
 	}
 }
@@ -50,6 +64,7 @@ void GameManager::KeyPress(const char _ch)
 void GameManager::AddCardToHand(int _cardNum)
 {
 	cards.push_back(_cardNum);
+	DisplayCards();
 }
 
 // Return a card number from their hand to pass to server
@@ -97,7 +112,7 @@ void GameManager::StartRound()
 			// Each system needs 3 cards
 			for (int j = 0; j < 3; j++)
 			{
-				// Send a peer to peer message to a specific host
+				// Send a peer to peer message to a specific client
 				// get machine address from manager
 				// and get card value from top of card answer deck
 				networkManager->PeerToPeerMessage(ID_DEAL_CARD_TO_PLAYER,
@@ -105,17 +120,12 @@ void GameManager::StartRound()
 					answerDeck[topAnswerCard%answerDeck.size()]);
 				topAnswerCard++;
 			}
-		}
-		
+		}	
 	}
-	// Iterate through players cards and display them at the start of a round
-	for (int i = 0; i < cards.size(); i++)
+	// Force a delay while waiting for cards
+	else
 	{
-		std::string cardInfo = "a";
-		cardInfo += std::to_string(cards[i]);
-		const char *cstr = cardInfo.c_str();
-		std::string card = xmlManager->GetStringVariableFromScript("answers", cstr);
-		std::cout << i+1 << ": " << card << "\n";
+		Sleep(200);
 	}
 }
 
