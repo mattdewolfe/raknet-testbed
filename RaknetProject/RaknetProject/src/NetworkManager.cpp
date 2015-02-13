@@ -14,7 +14,6 @@ NetworkManager::NetworkManager(GameManager* _game)
 void NetworkManager::Init(bool _isHost)
 {
 	bIsHost = _isHost;
-	printf("getting rakpeer");
 	rakPeer = RakPeerInterface::GetInstance();
 	
 	rakPeer->AttachPlugin(&readyEventPlugin);
@@ -72,22 +71,29 @@ void NetworkManager::ListIP()
 		printf("LocalIP: %s\n",rakPeer->GetLocalIP(i));
 	}
 }
-// Send a message to a specific machine
-void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue)
+
+// Send a system message, generally with card value, to target machine or all clients
+void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue, bool _broadcast)
 {
 	RakNet::BitStream bsOut;
-	bsOut.Write(_messageType);
-	bsOut.Write(_cardValue);
-	rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,_address,false);
+	bsOut.Write((unsigned char)_messageType);
+	// Only write in a card value if _cardValue is not default of -1
+	if (_cardValue > -1)
+	{
+		bsOut.Write(_cardValue);
+	}
+	// Check if this message is intended to broadcast or not, and call matching 
+	// version of rak-Send
+	if (_broadcast == true)
+	{
+		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
+	}
+	else
+	{
+		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,_address,false);
+	}
 }
-// Fire off a message to connected machines
-void NetworkManager::NetworkMessage(GameMessages _messageType, int _cardValue)
-{
-	RakNet::BitStream bsOut;
-	bsOut.Write(_messageType);
-	bsOut.Write(_cardValue);
-	rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
-}
+
 
 void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
 {
@@ -102,7 +108,7 @@ SystemAddress NetworkManager::GetConnectedMachine(int _playerNum)
 	// Next get number of systems, and try to grab 
 	// the desired system address (ensuring within bounds of connected systems)
 	rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
-	if (_playerNum < numberOfSystems)
+	if (_playerNum <= numberOfSystems)
 	{
 		temp = rakPeer->GetSystemAddressFromIndex(_playerNum);
 	}

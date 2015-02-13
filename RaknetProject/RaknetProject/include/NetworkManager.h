@@ -41,11 +41,15 @@ public:
 	void ListIP();
 	// Packet checking is done here
 	void CheckPackets();
-	// Request the networking fire off a message
-	void NetworkMessage(GameMessages _messageType, int _cardValue = -1);
-	// Request the networking send a peer to peer message
-	// Takes in message type, addess of target system, and value of card being passed (if card)
-	void PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue = -1);
+	/* Request the networking send a peer to peer message
+	** @parem - GameMessage - the event type we are sending
+	** @parem - SystemAddress - system of target machine
+	** @parem - int - value of the card being passed across, as we use this for 
+	**			sending and receiving card choices across clients and host
+	** @parem - bool - flag to denote if we want this message sent to target client or broadcast
+	**			 to all clients aside from this one
+	*/
+	void PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue = -1, bool _broadcast = false);
 	// Set an event flag for this client
 	void SetEventState(GameMessages _event, bool _isReady);
 	// Access the list of machines connected to the host

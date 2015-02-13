@@ -64,7 +64,8 @@ void GameManager::KeyPress(const char _ch)
 void GameManager::AddCardToHand(int _cardNum)
 {
 	cards.push_back(_cardNum);
-	DisplayCards();
+	if (cards.size() > 2)
+		DisplayCards();
 }
 
 // Return a card number from their hand to pass to server
@@ -96,7 +97,7 @@ void GameManager::StartRound()
 {
 	system("cls");
 	std::cout << " -- A new round has begun. --\n";
-	std::cout << "You have the following cards. \n";
+
 	// If this is the host, deal cards to each player
 	if (networkManager->IsHost() == true)
 	{
@@ -107,7 +108,7 @@ void GameManager::StartRound()
 			topAnswerCard++;
 		}
 		// Next do the same for each connected system
-		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+		for (int i = 1; i <= networkManager->GetNumberOfConnections(); i++)
 		{
 			// Each system needs 3 cards
 			for (int j = 0; j < 3; j++)
@@ -121,11 +122,6 @@ void GameManager::StartRound()
 				topAnswerCard++;
 			}
 		}	
-	}
-	// Force a delay while waiting for cards
-	else
-	{
-		Sleep(200);
 	}
 }
 
@@ -171,7 +167,7 @@ void GameManager::Init()
 		}
 	}
 	networkUpdates = new std::thread(&GameManager::UpdateNetwork, this);
-	networkUpdates->detach();
+	//networkUpdates->detach();
 	// If this is the host, we need to shuffle decks of cards
 	if (networkManager->IsHost() == true)
 	{
