@@ -19,6 +19,11 @@ public:
 	void Shutdown();
 	bool LoadScript(const char* _fileName);
 
+	// These functions were added specifically for use with our
+	// Cards Against Humanity game
+	std::string GetQuestionCardText(int _referenceNumber);
+	std::string GetAnswerCardText(int _referenceNumber);
+
 	// Get a variable by passing in the variable name in script
 	// @Parem - node to look under, attribute name, variable type to return
 	float GetFloatVariableFromScript(char* _node, const char* _name);

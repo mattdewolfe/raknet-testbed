@@ -5,6 +5,22 @@ XMLScriptManager::XMLScriptManager()
 
 }
 
+std::string XMLScriptManager::GetQuestionCardText(int _referenceNumber)
+{
+	std::string cardInfo = "q";
+	cardInfo += std::to_string(_referenceNumber);
+	const char *cstr = cardInfo.c_str();
+	return GetStringVariableFromScript("questions", cstr);
+}
+
+std::string XMLScriptManager::GetAnswerCardText(int _referenceNumber)
+{
+	std::string cardInfo = "a";
+	cardInfo += std::to_string(_referenceNumber);
+	const char *cstr = cardInfo.c_str();
+	return GetStringVariableFromScript("answers", cstr);
+}
+
 float XMLScriptManager::GetFloatVariableFromScript(char* _node, const char* _name)
 {
 	rapidxml::xml_node<>* parent = doc.first_node();

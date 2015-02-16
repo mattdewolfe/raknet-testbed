@@ -9,6 +9,10 @@
 #include "XMLScriptManager.h"
 #include "NetworkManager.h"
 
+// Simple definition to avoid using std:: all the time
+#define printout std::cout
+// Simple definition to improve readability of cout lines
+#define endline << "\n";
 // Max number of cards the player can hold
 #define HAND_SIZE 3
 
@@ -38,8 +42,11 @@ public:
 	void AddCardToHand(int _cardNum);
 	// Return a card number from their hand to pass to server
 	int RemoveCardFromHand(int _choice);
-	// Clear screen and display information to start the round
-	void StartRound();
+	// Clear screen and deal cards to players
+	void StartGame();
+	// Takes in value referencing questions from xml
+	// and displays round info
+	void StartNextRound(int _questionCard);
 	// Start up networking and game
 	void Init();
 	// Shutdown the system
@@ -57,24 +64,33 @@ private:
 	// Networking manager, handles packets
 	NetworkManager* networkManager;
 
+	// Thread for network update loop
 	std::thread* networkUpdates;
 	void UpdateNetwork();
 
 	// Flag for determining if this player is the host
 	bool bIsHostClient;
-	// Local players name
-	std::string playerName;
-
+	// Flag for denoting this player is the question ASKER
+	bool bIsQuestionAsker;
+		
 	// Store what cards the player has
 	std::vector<int> cards;
 	// Question and Answer decks, only accessed by master/host
 	std::vector<int> answerDeck;
 	std::vector<int> questionDeck;
+	
+	// Local players name
+	std::string playerName;
 	// Store current index of array
 	int topAnswerCard, topQuestionCard;
+	// Store xml reference value of current question
+	int currentQuestionCard;
+	// Store this players points
+	int points;
 
 	// Shuffle decks of cards before beginning play
 	void ShuffleDecks();
-	void DealCardsToClient();
+	// Deal a new card to client
+	void DealCardToClient();
 };
 

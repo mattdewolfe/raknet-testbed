@@ -73,22 +73,20 @@ void NetworkManager::ListIP()
 }
 
 // Send a system message, generally with card value, to target machine or all clients
-void NetworkManager::PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue, bool _broadcast)
+void NetworkManager::PeerToPeerMessage(std::string _name, GameMessages _messageType, SystemAddress _address, int _cardValue, bool _broadcast)
 {
 	RakNet::BitStream bsOut;
 	bsOut.Write((unsigned char)_messageType);
-	// Only write in a card value if _cardValue is not default of -1
-	if (_cardValue > -1)
-	{
-		bsOut.Write(_cardValue);
-	}
+	bsOut.Write(_cardValue);
+	bsOut.Write(_name);
+
 	// Check if this message is intended to broadcast or not, and call matching 
 	// version of rak-Send
 	if (_broadcast == true)
 	{
 		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
 	}
-	else
+	else 
 	{
 		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,_address,false);
 	}
@@ -119,30 +117,45 @@ SystemAddress NetworkManager::GetConnectedMachine(int _playerNum)
 // Pole packets and take action as needed
 void NetworkManager::CheckPackets()
 {
+	std::string playerName;
+	int cardVal;
+	GameMessages messageType;
+	
 	while (rakPeer)
 	{
 		Packet *p = rakPeer->Receive();
 		if (p)
 		{
 			RakNet::BitStream bitStream(p->data, p->length, false);
-			int cardVal;
-			GameMessages messageType;
 			switch (p->data[0])
 			{
 			// Custom defined events
 			// When receiving a card from the host
 			case ID_DEAL_CARD_TO_PLAYER:
-				bitStream.IgnoreBytes(sizeof(GameMessages));
+				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
 				game->AddCardToHand(cardVal);
 				break;
+			// When receiving a ready to play message
+			case ID_READY_TO_PLAY:
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(cardVal);
+				bitStream.Read(playerName);
+				printout << ": Network : " << playerName << " is ready to play." endline
+				break;
+			// When receiving the start next round message (should broadcast from host)
+			case ID_START_NEXT_ROUND:
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(cardVal);
+				game->StartNextRound(cardVal);
+				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
-				printf(": Network : A Player is joining...\n");
+				printout << ": Network : A Player is joining..." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
-				printf(": Network : Joining game...\n");
+				printout << ": Network : Joining game..." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
@@ -156,15 +169,14 @@ void NetworkManager::CheckPackets()
 					if (bGameStarted == false)
 					{
 						system("cls");
-						printf(": Network :  \\('^')/ Let the game being!\n", p->guid.ToString());
-						Sleep(35);
+						printout << ": Network :  \\('^')/ Let the game being!" endline
 						bGameStarted = true;
 						if (bIsHost)
 						{
 							// Store number of connections
 							rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
 						}
-						game->StartRound();
+						game->StartGame();
 					}
 					break;
 				// Everyone has submitted an answer card
@@ -175,11 +187,9 @@ void NetworkManager::CheckPackets()
 				break;
 
 			case ID_READY_EVENT_SET:
-				printf(": Network : %s is ready.\n", p->guid.ToString());
 				break;
 
 			case ID_READY_EVENT_UNSET:
-				printf(": Network : %s is not ready.\n", p->guid.ToString());
 				break;
 
 			case ID_DISCONNECTION_NOTIFICATION:

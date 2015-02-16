@@ -3,8 +3,10 @@
 GameManager::GameManager(void) :
 	state(LOADING),
 	bIsHostClient(false),
+	bIsQuestionAsker(false),
 	topQuestionCard(0),
-	topAnswerCard(0)
+	topAnswerCard(0),
+	currentQuestionCard(0)
 {
 	xmlManager = new XMLScriptManager();
 	xmlManager->Init();
@@ -19,15 +21,11 @@ GameManager::~GameManager(void)
 void GameManager::DisplayCards()
 {
 	system("cls");
-	std::cout << "You have the following cards. \n";
+	printout << "You have the following cards." endline
 	// Iterate through players cards and display them at the start of a round
 	for (int i = 0; i < cards.size(); i++)
 	{
-		std::string cardInfo = "a";
-		cardInfo += std::to_string(cards[i]);
-		const char *cstr = cardInfo.c_str();
-		std::string card = xmlManager->GetStringVariableFromScript("answers", cstr);
-		std::cout << i+1 << ": " << card << "\n";
+		printout << i+1 << ": " << xmlManager->GetAnswerCardText(cards[i]) endline
 	}
 }
 
@@ -87,20 +85,34 @@ int GameManager::RemoveCardFromHand(int _choice)
 	return -1;
 }
 
-void GameManager::DealCardsToClient()
+void GameManager::DealCardToClient()
 {
 
 }
 
-// Clear screen and display information to start the round
-void GameManager::StartRound()
+// Clears screen and displays info for this round
+void GameManager::StartNextRound(int _questionCard)
 {
 	system("cls");
-	std::cout << " -- A new round has begun. --\n";
+	printout << " - A new round has begun. -" endline
+	DisplayCards();
+	printout << "\n: Game : Complete the following: " endline
+	// Printout the question for this round
+	printout << "\n->" << xmlManager->GetQuestionCardText(_questionCard) endline
+	
+}
+
+// Clear screen, let players know the game has started
+// and send cards to all players
+void GameManager::StartGame()
+{
+	system("cls");
+	printout << " - The game has started. -" endline
 
 	// If this is the host, deal cards to each player
 	if (networkManager->IsHost() == true)
 	{
+		bIsQuestionAsker = true;
 		// First deal 3 cards to self from back of answer vector
 		for (int i = 0; i < 3; i++)
 		{
@@ -108,7 +120,7 @@ void GameManager::StartRound()
 			topAnswerCard++;
 		}
 		// Next do the same for each connected system
-		for (int i = 1; i <= networkManager->GetNumberOfConnections(); i++)
+		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
 		{
 			// Each system needs 3 cards
 			for (int j = 0; j < 3; j++)
@@ -116,12 +128,24 @@ void GameManager::StartRound()
 				// Send a peer to peer message to a specific client
 				// get machine address from manager
 				// and get card value from top of card answer deck
-				networkManager->PeerToPeerMessage(ID_DEAL_CARD_TO_PLAYER,
+				networkManager->PeerToPeerMessage(playerName, 
+					ID_DEAL_CARD_TO_PLAYER,
 					networkManager->GetConnectedMachine(i), 
 					answerDeck[topAnswerCard%answerDeck.size()]);
 				topAnswerCard++;
 			}
-		}	
+		}
+		// Finally send message to start the round, along with 
+		// number of next question card
+		currentQuestionCard = questionDeck[topQuestionCard%questionDeck.size()];
+		networkManager->PeerToPeerMessage(playerName, 
+			ID_START_NEXT_ROUND, 
+			networkManager->GetConnectedMachine(0),
+			currentQuestionCard,
+			true);
+		// Call start round on host, rather than sending a message to myself
+		StartNextRound(currentQuestionCard);
+		topQuestionCard++;
 	}
 }
 
@@ -129,14 +153,19 @@ void GameManager::StartRound()
 // and ensure they don't want their name to be network, like a silly chump
 void GameManager::RequestPlayerName()
 {
-	std::cout << "Enter your name: ";
+	printout << "Enter your name: ";
 	std::cin >> playerName;
 	std::cin.clear();
+	// Get a temp to clear return key
 	char temp[5];
 	gets_s(temp);
-	if (playerName == "Network" || playerName == "NETWORK" || playerName == "network")
+	// Create a temp string to check that the name is allowed
+	std::string check = playerName;
+	std::transform(check.begin(), check.end(), check.begin(), ::tolower);
+
+	if (check == "network" || check == "game")
 	{
-		std::cout << "You are not a network.\n";
+		printout << " : Game : Illegal name choice." endline
 		RequestPlayerName();
 	}
 }
@@ -149,7 +178,7 @@ void GameManager::Init()
 
 	// Ask player for IP address to connect to
 	char ip[256];
-	std::cout << "Enter host IP address (or press enter to host): ";
+	printout << "Enter host IP address (or press enter to host): ";
 	gets_s(ip);
 	// List active connections
 	if (ip[0] == 0)
@@ -167,17 +196,23 @@ void GameManager::Init()
 		}
 	}
 	networkUpdates = new std::thread(&GameManager::UpdateNetwork, this);
-	//networkUpdates->detach();
+
 	// If this is the host, we need to shuffle decks of cards
 	if (networkManager->IsHost() == true)
 	{
 		ShuffleDecks();
 	}
 	// Wait for a key press
-	std::cout << ": " << playerName << " : Press Enter when you are ready to play.\n";
+	printout << ": " << playerName << " : Press Enter when you are ready to play." endline
 	getchar();
 	// Once hit, let the other clients know this player is ready
 	networkManager->SetEventState(GameMessages::ID_READY_TO_PLAY, true);
+	networkManager->PeerToPeerMessage(playerName, 
+		GameMessages::ID_READY_TO_PLAY, 
+		networkManager->GetConnectedMachine(0),
+		-1, 
+		true);
+	printout << ": " << playerName << " : Your are ready." endline
 }
 
 void GameManager::ShuffleDecks()
@@ -199,8 +234,8 @@ void GameManager::ShuffleDecks()
 	// Shuffle both decks
 	std::random_shuffle(questionDeck.begin(), questionDeck.end());
 	std::random_shuffle(answerDeck.begin(), answerDeck.end());
-
 }
+
 void GameManager::UpdateNetwork()
 {
 	networkManager->CheckPackets();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <string>
 #include "GetTime.h"
 #include "Rand.h"
 #include "RakPeerInterface.h"
@@ -15,6 +16,8 @@
 using namespace RakNet;
 class GameManager;
 
+// NOTE - We must still ignore (MessageID) when reading in our bit streams
+// or else data will not be properly parsed. This is an oddity of Raknet.
 enum GameMessages
 {
 	ID_TO_CLIENT_MESSAGE = ID_USER_PACKET_ENUM + 1,
@@ -24,7 +27,8 @@ enum GameMessages
 	ID_READY_TO_PLAY = ID_TO_CLIENT_MESSAGE + 4, 
 	ID_DEAL_CARD_TO_PLAYER =  ID_TO_CLIENT_MESSAGE + 5,
 	ID_SEND_ANSWER_CARD =  ID_TO_CLIENT_MESSAGE + 6,
-	ID_START_NEW_ROUND = ID_TO_CLIENT_MESSAGE + 7
+	ID_START_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 7,
+	ID_ASSIGN_QUESTION_ASKER = ID_TO_CLIENT_MESSAGE + 8
 };
 
 class NetworkManager
@@ -42,6 +46,7 @@ public:
 	// Packet checking is done here
 	void CheckPackets();
 	/* Request the networking send a peer to peer message
+	** @parem - std::string - name of the player sending this message
 	** @parem - GameMessage - the event type we are sending
 	** @parem - SystemAddress - system of target machine
 	** @parem - int - value of the card being passed across, as we use this for 
@@ -49,7 +54,7 @@ public:
 	** @parem - bool - flag to denote if we want this message sent to target client or broadcast
 	**			 to all clients aside from this one
 	*/
-	void PeerToPeerMessage(GameMessages _messageType, SystemAddress _address, int _cardValue = -1, bool _broadcast = false);
+	void PeerToPeerMessage(std::string _name, GameMessages _messageType, SystemAddress _address, int _cardValue = -1, bool _broadcast = false);
 	// Set an event flag for this client
 	void SetEventState(GameMessages _event, bool _isReady);
 	// Access the list of machines connected to the host
