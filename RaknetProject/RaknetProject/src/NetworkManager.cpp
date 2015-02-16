@@ -5,7 +5,8 @@ NetworkManager::NetworkManager(GameManager* _game)
 	: rakPeer(0), 
 	bIsHost(false),
 	bGameStarted(false),
-	game(_game)
+	game(_game),
+	totalAnswersReceived(0)
 
 {
 	printf("Networking enabled.\n");
@@ -56,7 +57,9 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	}
 	else
 	{
-		car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		// car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		// Temp line for faster testing on my home PC
+		car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
 	printf("Attempting to connect to %s...\n", _ip);
@@ -101,7 +104,7 @@ void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
 // Get a specific system address for peer to peer
 SystemAddress NetworkManager::GetConnectedMachine(int _playerNum)
 {
-	// First off grab host address
+	// Grab first index
 	SystemAddress temp = rakPeer->GetSystemAddressFromIndex(0);
 	// Next get number of systems, and try to grab 
 	// the desired system address (ensuring within bounds of connected systems)
@@ -130,6 +133,18 @@ void NetworkManager::CheckPackets()
 			switch (p->data[0])
 			{
 			// Custom defined events
+			// When a player sends their cards to the host
+			case ID_SEND_ANSWER_CARD:
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				// Read in the card reference value for the answer
+				bitStream.Read(cardVal);
+				answerInfo[totalAnswersReceived].submittedAnswer = cardVal;
+				// Read in the players name
+				bitStream.Read(playerName);
+				answerInfo[totalAnswersReceived].playerName = playerName;
+				// Store IP address this answer came from
+				answerInfo[totalAnswersReceived].address = p->systemAddress;
+				break;
 			// When receiving a card from the host
 			case ID_DEAL_CARD_TO_PLAYER:
 				bitStream.IgnoreBytes(sizeof(MessageID));
@@ -145,9 +160,11 @@ void NetworkManager::CheckPackets()
 				break;
 			// When receiving the start next round message (should broadcast from host)
 			case ID_START_NEXT_ROUND:
+				totalAnswersReceived = 0;
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
 				game->StartNextRound(cardVal);
+				SetEventState(ID_SEND_ANSWER_CARD, false);
 				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
@@ -177,6 +194,7 @@ void NetworkManager::CheckPackets()
 							rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
 						}
 						game->StartGame();
+						readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 					}
 					break;
 				// Everyone has submitted an answer card

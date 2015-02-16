@@ -6,6 +6,7 @@
 #include <RakThread.h>
 #include <thread>
 #include <algorithm>
+#include <time.h> 
 #include "XMLScriptManager.h"
 #include "NetworkManager.h"
 
@@ -67,6 +68,10 @@ private:
 	// Thread for network update loop
 	std::thread* networkUpdates;
 	void UpdateNetwork();
+
+	// Thread for listening to user input
+	std::thread* inputListener;
+	void ListenForInput();
 
 	// Flag for determining if this player is the host
 	bool bIsHostClient;

@@ -31,6 +31,17 @@ enum GameMessages
 	ID_ASSIGN_QUESTION_ASKER = ID_TO_CLIENT_MESSAGE + 8
 };
 
+// Stores information for each submitted answer each round
+struct AnswerInfo
+{
+	// Store the last card they submitted
+	int submittedAnswer;
+	// Store the address this answer came from
+	SystemAddress address;
+	// Stores their name
+	std::string playerName;
+};
+
 class NetworkManager
 {
 public:
@@ -80,9 +91,16 @@ private:
 	unsigned short numberOfSystems;
 	GameManager* game;
 	
+	// Stores player info regarding address, name, score, etc
+	AnswerInfo answerInfo[MAX_CONNECTIONS];
+	// Tracks how many answers have been submitted
+	int totalAnswersReceived;
+	// Has the game started - no more joiners
 	bool bGameStarted;
+	// Is this the host machine?
 	bool bIsHost;
 
+	// Raknet variables - key to standard networking, event system, and connected graph
 	RakPeerInterface *rakPeer;
 	ReadyEvent readyEventPlugin;
 

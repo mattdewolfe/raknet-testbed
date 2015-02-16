@@ -9,6 +9,7 @@ GameManager::GameManager(void) :
 	currentQuestionCard(0)
 {
 	xmlManager = new XMLScriptManager();
+	srand(time(NULL));
 	xmlManager->Init();
 	networkManager = new NetworkManager(this);
 }
@@ -32,10 +33,11 @@ void GameManager::DisplayCards()
 // Should loop listening for key input and calling function as needed
 void GameManager::KeyPress(const char _ch)
 {
+	printout << _ch;
 	// Iterate through key press options and take action based on that
 	if (_ch == 'q' || _ch == 'Q')
 	{
-		state = QUIT;
+		Shutdown();
 	}
 	// If they are waiting to submit an answer
 	else if (state == SUBMIT_ANSWER)
@@ -45,6 +47,14 @@ void GameManager::KeyPress(const char _ch)
 		{
 			// Grab that card and forward to server
 			int temp = RemoveCardFromHand(_ch);
+			printout << " : Game : You submitted the following card: " endline
+			printout << " -> " << xmlManager->GetAnswerCardText(_ch);
+			networkManager->PeerToPeerMessage(playerName, 
+				ID_SEND_ANSWER_CARD,
+				networkManager->GetConnectedMachine(0), 
+				_ch, 
+				false);
+			networkManager->SetEventState(ID_SEND_ANSWER_CARD, true);
 			state = WAITING_FOR_PLAYERS;
 		}
 	}
@@ -93,13 +103,13 @@ void GameManager::DealCardToClient()
 // Clears screen and displays info for this round
 void GameManager::StartNextRound(int _questionCard)
 {
-	system("cls");
-	printout << " - A new round has begun. -" endline
+	state = SUBMIT_ANSWER;
 	DisplayCards();
-	printout << "\n: Game : Complete the following: " endline
+
+	printout << "\n - A new round has begun. -" endline
+	printout << "\n: Game : Complete the following. " endline
 	// Printout the question for this round
 	printout << "\n->" << xmlManager->GetQuestionCardText(_questionCard) endline
-	
 }
 
 // Clear screen, let players know the game has started
@@ -135,7 +145,7 @@ void GameManager::StartGame()
 				topAnswerCard++;
 			}
 		}
-		// Finally send message to start the round, along with 
+		// Send message to start the round, along with 
 		// number of next question card
 		currentQuestionCard = questionDeck[topQuestionCard%questionDeck.size()];
 		networkManager->PeerToPeerMessage(playerName, 
@@ -146,6 +156,24 @@ void GameManager::StartGame()
 		// Call start round on host, rather than sending a message to myself
 		StartNextRound(currentQuestionCard);
 		topQuestionCard++;
+	}
+
+	// Startup input listener thread
+	inputListener = new std::thread(&GameManager::ListenForInput, this);
+}
+
+// Key listening thread function. Should constantly pass single key presses on
+// for handling - after the game has been started
+void GameManager::ListenForInput()
+{
+	char ch=0;
+	while (1)
+	{
+		if (_kbhit())
+		{
+			ch=_getch();
+			KeyPress(ch);
+		}
 	}
 }
 
@@ -165,7 +193,7 @@ void GameManager::RequestPlayerName()
 
 	if (check == "network" || check == "game")
 	{
-		printout << " : Game : Illegal name choice." endline
+		printout << "\n : Game : Illegal name choice." endline
 		RequestPlayerName();
 	}
 }
@@ -244,4 +272,5 @@ void GameManager::UpdateNetwork()
 void GameManager::Shutdown()
 {
 	networkManager->Destroy();
+	exit(0);
 }

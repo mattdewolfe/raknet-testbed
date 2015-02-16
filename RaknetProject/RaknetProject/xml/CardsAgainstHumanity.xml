@@ -1,6 +1,6 @@
 <cards>
   <questions>
-    <questionCount>7</questionCount>
+    <questionCount>11</questionCount>
     <q0>What did I bring back from Mexico?</q0>
     <q1>What ended my last relationship?</q1>
     <q2>___? There's an app for that.</q2>
@@ -8,9 +8,13 @@
     <q4>What's that smell?</q4>
     <q5>I drink to forget ___.</q5>
     <q6>___. That's how I want to die.</q6>
+    <q7>I was arrested yesterday for ___.</q7>
+    <q8>The night ended the instant I brought up my love of ___.</q8>
+    <q9>What do white people love doing?</q9>
+    <q10>What makes the special sauce special?</q10>
   </questions>
   <answers>
-    <answerCount>21</answerCount>
+    <answerCount>26</answerCount>
     <a0>Powerful thighs.</a0>
     <a1>Crippling debt.</a1>
     <a2>AIDS.</a2>
@@ -32,6 +36,11 @@
     <a18>Gaots eating cans.</a18>
     <a19>The KKK.</a19>
     <a20>The American Dream.</a20>
+    <a21>Cream of Some Young Guy.</a21>
+    <a22>The tears of orphans.</a22>
+    <a23>Vaginas with teeth.</a23>
+    <a24>Kegels.</a24>
+    <a25>Stealing from my siblings.</a25>
   </answers>
 </cards>
   
