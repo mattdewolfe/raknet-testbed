@@ -19,13 +19,13 @@
 
 enum GAME_STATE
 {
-	LOADING = 0, 
+	LOADING = 0,
 	ROUND_START,
-	SUBMIT_ANSWER, 
+	SUBMIT_ANSWER,
 	WAITING_FOR_ANSWERS,
 	WAITING_FOR_PLAYERS,
 	SELECTING_BEST_ANSWER,
-	SCORING, 
+	SCORING,
 	QUIT
 };
 
@@ -58,6 +58,8 @@ public:
 	void RequestPlayerName();
 	// Print out answer cards to question asker
 	void DisplayCards();
+	// Send answer to master
+	void SubmitAnswer(int _inputVal);
 	// Show answer cards to the question asker, to pick from
 	void ShowAnswerCardsToAsker();
 	// Award point to this player
@@ -102,6 +104,8 @@ private:
 	// Store xml reference value of current question
 	int currentQuestionCard;
 
+	// Clear screen, draw basic information layout
+	void DrawScreenUI();
 	// Shuffle decks of cards before beginning play
 	void ShuffleDecks();
 	// Deal the specified number of cards to all systems

@@ -50,6 +50,14 @@ void NetworkManager::Destroy()
 	}
 }
 
+void NetworkManager::AddAnswerInfo(int _cardVal, std::string _name, SystemAddress _address)
+{
+	answerInfo[totalAnswersReceived].submittedAnswer = _cardVal;
+	answerInfo[totalAnswersReceived].playerName = _name;
+	answerInfo[totalAnswersReceived].address = _address;
+	totalAnswersReceived++;
+}
+
 bool NetworkManager::EstablishConnection(const char _ip[])
 {
 	ConnectionAttemptResult car;
@@ -63,7 +71,7 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 		// Temp line for faster testing on my home PC
 		// car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 		// Temp line for testing on school pc
-		car = rakPeer->Connect("10.10.106.213", PORT, 0, 0, 0);
+		car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
 	printf("Attempting to connect to %s...\n", _ip);
@@ -89,9 +97,14 @@ void NetworkManager::PeerToPeerMessage(std::string _name, GameMessages _messageT
 
 	// Check if this message is intended to broadcast or not, and call matching 
 	// version of rak-Send
+	
 	if (_broadcast == true)
 	{
-		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
+		if (_messageType == ID_SEND_ANSWER_CARD)
+		{
+			AddAnswerInfo(_cardValue, _name, _address);
+		}
+		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,UNASSIGNED_SYSTEM_ADDRESS,true);
 	}
 	else 
 	{
@@ -156,7 +169,6 @@ void NetworkManager::CheckPackets()
 			case ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST:
 				// Flag this player as having submitted an answer
 				// since they do not get to submit while reading the question
-				bIsNewRoundReady = true;
 				SetEventState(ID_SEND_ANSWER_CARD, true);
 				game->MakeQuestionAsker();
 				break;
@@ -166,13 +178,10 @@ void NetworkManager::CheckPackets()
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				// Read in the card reference value for the answer
 				bitStream.Read(cardVal);
-				answerInfo[totalAnswersReceived].submittedAnswer = cardVal;
 				// Read in the players name
 				bitStream.Read(playerName);
-				answerInfo[totalAnswersReceived].playerName = playerName;
 				// Store IP address this answer came from
-				answerInfo[totalAnswersReceived].address = p->systemAddress;
-				totalAnswersReceived++;
+				AddAnswerInfo(cardVal, playerName, p->systemAddress);
 				break;
 			// When receiving a card from the host
 			case ID_DEAL_CARD_TO_PLAYER:
@@ -236,42 +245,42 @@ void NetworkManager::CheckPackets()
 				case ID_SEND_ANSWER_CARD:
 					if (bIsNewRoundReady == false)
 					{
-						game->ShowAnswerCardsToAsker();
 						bIsNewRoundReady = true;
+						game->ShowAnswerCardsToAsker();
 					}
 					break;
 				// Everyone is ready to start a new round
 				case ID_READY_FOR_NEXT_ROUND:
 					// If I am the host, select a new question asker
-					if (bIsHost)
+					if (bIsNewRoundReady == true)
 					{
-						if (bIsNewRoundReady == true)
+						bIsNewRoundReady = false;
+						if (bIsHost == true)
 						{
-							bOut.Write(ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
 							// Increment question asker index, and clamp to bounds
 							currentQuestionAsker++;
 							// If capped, I am the question asker
 							if (currentQuestionAsker >= numberOfSystems)
 							{
-								currentQuestionAsker = 0;
+								currentQuestionAsker = -1;
 								game->MakeQuestionAsker();
 							}
 							// Otherwise, assign a remote system as asker
 							else
 							{
-								rakPeer->Send(&bOut, HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[currentQuestionAsker], false);
+								bOut.Write(ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
+								rakPeer->Send(&bOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[currentQuestionAsker], false);
 							}
-							Sleep(30);
 							// Then broadcast the start round event
-
-							PeerToPeerMessage(playerName, 
-								ID_START_NEXT_ROUND, 
-								UNASSIGNED_SYSTEM_ADDRESS, 
-								game->GetNextQuestionCard(), 
+							int nextCard = game->GetNextQuestionCard();
+							PeerToPeerMessage(playerName,
+								ID_START_NEXT_ROUND,
+								UNASSIGNED_SYSTEM_ADDRESS,
+								nextCard,
 								true);
+							game->StartNextRound(nextCard);
 						}
 					}
-					bIsNewRoundReady = false;
 					break;
 				}
 				break;

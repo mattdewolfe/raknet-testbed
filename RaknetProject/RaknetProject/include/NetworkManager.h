@@ -89,6 +89,9 @@ public:
 	void Destroy();
 
 private:
+	// Add a players answer information to answer array
+	void AddAnswerInfo(int _cardVal, std::string _name, SystemAddress _address);
+
 	// List of addresses connected to host
 	SystemAddress remoteSystems[MAX_CONNECTIONS];
 	unsigned short numberOfSystems;
