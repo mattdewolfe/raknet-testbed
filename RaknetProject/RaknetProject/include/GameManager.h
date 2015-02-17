@@ -24,6 +24,7 @@ enum GAME_STATE
 	SUBMIT_ANSWER, 
 	WAITING_FOR_ANSWERS,
 	WAITING_FOR_PLAYERS,
+	SELECTING_BEST_ANSWER,
 	SCORING, 
 	QUIT
 };
@@ -36,7 +37,8 @@ public:
 	~GameManager(void);
 
 	GAME_STATE state;
-
+	// Make this player the question asker
+	void MakeQuestionAsker() { bIsQuestionAsker = true; }
 	// Process player input
 	void KeyPress(const char _ch);
 	// Add a card to the local players hand
@@ -54,8 +56,14 @@ public:
 	void Shutdown();
 	// Ask the player to enter their name
 	void RequestPlayerName();
-	// Print out users cards at top of screen
+	// Print out answer cards to question asker
 	void DisplayCards();
+	// Show answer cards to the question asker, to pick from
+	void ShowAnswerCardsToAsker();
+	// Award point to this player
+	void AwardPoint();
+	// Show the answers to all players and the winning answer
+	void DisplayAnswersAndWinner(int _winnerReference);
     // Return the player name - used with server messages
 	std::string GetPlayerName() { return playerName; }
 
@@ -65,11 +73,10 @@ private:
 	// Networking manager, handles packets
 	NetworkManager* networkManager;
 
-	// Thread for network update loop
+	// Network update thread - runs CheckPackets on NetworkManager
 	std::thread* networkUpdates;
-	void UpdateNetwork();
 
-	// Thread for listening to user input
+	// User Input thread - runs ListenForInput on this object
 	std::thread* inputListener;
 	void ListenForInput();
 
@@ -84,18 +91,20 @@ private:
 	std::vector<int> answerDeck;
 	std::vector<int> questionDeck;
 	
+	// Number of points this player has
+	int points;
 	// Local players name
 	std::string playerName;
 	// Store current index of array
 	int topAnswerCard, topQuestionCard;
 	// Store xml reference value of current question
 	int currentQuestionCard;
-	// Store this players points
-	int points;
 
 	// Shuffle decks of cards before beginning play
 	void ShuffleDecks();
 	// Deal a new card to client
 	void DealCardToClient();
+	// Convert char input to an int
+	int InputToInt(char _in) { return _in - 48; }
 };
 

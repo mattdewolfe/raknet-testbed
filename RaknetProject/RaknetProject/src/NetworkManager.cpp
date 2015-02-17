@@ -133,6 +133,23 @@ void NetworkManager::CheckPackets()
 			switch (p->data[0])
 			{
 			// Custom defined events
+			// Assign someone as the question asker
+			case ID_REPLY_CHOICE:
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(cardVal);
+				game->DisplayAnswersAndWinner(cardVal);
+				break;
+			// Assign someone as the question asker
+			case ID_AWARD_POINT:
+				game->AwardPoint();
+				break;
+			// Assign someone as the question asker
+			case ID_ASSIGN_QUESTION_ASKER:
+				// Flag this player as having submitted an answer
+				// since they do not get to submit while reading the question
+				SetEventState(ID_SEND_ANSWER_CARD, true);
+				game->MakeQuestionAsker();
+				break;
 			// When a player sends their cards to the host
 			case ID_SEND_ANSWER_CARD:
 				bitStream.IgnoreBytes(sizeof(MessageID));
@@ -160,20 +177,22 @@ void NetworkManager::CheckPackets()
 				break;
 			// When receiving the start next round message (should broadcast from host)
 			case ID_START_NEXT_ROUND:
+				SetEventState(ID_SEND_ANSWER_CARD, false);
 				totalAnswersReceived = 0;
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
 				game->StartNextRound(cardVal);
-				SetEventState(ID_SEND_ANSWER_CARD, false);
 				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
 				printout << ": Network : A Player is joining..." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
+				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 				printout << ": Network : Joining game..." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
+				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
 				bitStream.IgnoreBytes(sizeof(MessageID));
@@ -194,12 +213,11 @@ void NetworkManager::CheckPackets()
 							rakPeer->GetConnectionList(remoteSystems, &numberOfSystems);
 						}
 						game->StartGame();
-						readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 					}
 					break;
 				// Everyone has submitted an answer card
 				case ID_SEND_ANSWER_CARD:
-					
+					game->ShowAnswerCardsToAsker();
 					break;
 				}
 				break;

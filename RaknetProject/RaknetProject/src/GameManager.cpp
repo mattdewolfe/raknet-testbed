@@ -6,7 +6,8 @@ GameManager::GameManager(void) :
 	bIsQuestionAsker(false),
 	topQuestionCard(0),
 	topAnswerCard(0),
-	currentQuestionCard(0)
+	currentQuestionCard(0),
+	points(0)
 {
 	xmlManager = new XMLScriptManager();
 	srand(time(NULL));
@@ -22,6 +23,7 @@ GameManager::~GameManager(void)
 void GameManager::DisplayCards()
 {
 	system("cls");
+	printout << "You have " << points << " points." endline
 	printout << "You have the following cards." endline
 	// Iterate through players cards and display them at the start of a round
 	for (int i = 0; i < cards.size(); i++)
@@ -35,27 +37,54 @@ void GameManager::KeyPress(const char _ch)
 {
 	printout << _ch;
 	// Iterate through key press options and take action based on that
-	if (_ch == 'q' || _ch == 'Q')
+	if (_ch == 'p' || _ch == 'P')
 	{
 		Shutdown();
 	}
-	// If they are waiting to submit an answer
+	// if they are waiting to submit an answer
 	else if (state == SUBMIT_ANSWER)
 	{
+		// Convert this to an int for index access
+		int tempInt = InputToInt(_ch) - 1;
 		// And their input is within hand size
-		if (_ch > 0 && _ch < HAND_SIZE)
+		if (tempInt >= 0 && tempInt < HAND_SIZE)
 		{
-			// Grab that card and forward to server
-			int temp = RemoveCardFromHand(_ch);
-			printout << " : Game : You submitted the following card: " endline
-			printout << " -> " << xmlManager->GetAnswerCardText(_ch);
+			// Grab that card reference number
+			int temp = RemoveCardFromHand(tempInt);
+			// Let the user know they have played that card
+			printout << "\n : Game : You submitted the following card: " 
+				<< xmlManager->GetAnswerCardText(temp) endline
+			// Forward card selection to server
 			networkManager->PeerToPeerMessage(playerName, 
 				ID_SEND_ANSWER_CARD,
 				networkManager->GetConnectedMachine(0), 
-				_ch, 
-				false);
+				temp, 
+				true);
 			networkManager->SetEventState(ID_SEND_ANSWER_CARD, true);
 			state = WAITING_FOR_PLAYERS;
+		}
+	}
+	// key presses when waiting for leader to select winning answer
+	else if (state == SELECTING_BEST_ANSWER)
+	{
+		if (bIsQuestionAsker == true)
+		{
+			// Convert this to an int for index access
+			int tempInt = InputToInt(_ch) - 1;
+			// Was the selected value within range of player count
+			if (tempInt >= 0 && tempInt < networkManager->GetNumberOfConnections())
+			{
+				// Sends reply that was selected to all players
+				networkManager->PeerToPeerMessage(playerName, 
+				ID_REPLY_CHOICE,
+				networkManager->GetConnectedMachine(0), 
+				tempInt, 
+				true);
+				// Sends award point message to winning player
+				networkManager->PeerToPeerMessage(playerName, 
+				ID_AWARD_POINT, 
+				networkManager->answerInfo[tempInt].address);
+			}
 		}
 	}
 	// If we are in the scoring state
@@ -69,6 +98,7 @@ void GameManager::KeyPress(const char _ch)
 	}
 }
 
+// Adds a card to this players hand
 void GameManager::AddCardToHand(int _cardNum)
 {
 	cards.push_back(_cardNum);
@@ -95,6 +125,7 @@ int GameManager::RemoveCardFromHand(int _choice)
 	return -1;
 }
 
+// Sends a card to a specified player
 void GameManager::DealCardToClient()
 {
 
@@ -223,13 +254,14 @@ void GameManager::Init()
 			networkManager->ListIP();
 		}
 	}
-	networkUpdates = new std::thread(&GameManager::UpdateNetwork, this);
+	networkUpdates = new std::thread(&NetworkManager::CheckPackets, networkManager);
 
 	// If this is the host, we need to shuffle decks of cards
 	if (networkManager->IsHost() == true)
 	{
 		ShuffleDecks();
 	}
+	system("cls");
 	// Wait for a key press
 	printout << ": " << playerName << " : Press Enter when you are ready to play." endline
 	getchar();
@@ -243,6 +275,7 @@ void GameManager::Init()
 	printout << ": " << playerName << " : Your are ready." endline
 }
 
+// Populate and shuffle the decks
 void GameManager::ShuffleDecks()
 {
 	// Get size of question deck
@@ -264,9 +297,48 @@ void GameManager::ShuffleDecks()
 	std::random_shuffle(answerDeck.begin(), answerDeck.end());
 }
 
-void GameManager::UpdateNetwork()
+// Print out answer cards to question asker
+void GameManager::ShowAnswerCardsToAsker()
 {
-	networkManager->CheckPackets();
+	state = SELECTING_BEST_ANSWER;
+	if (bIsQuestionAsker == true)
+	{
+		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+		{
+			printout << " : " << i+1 << " : " << xmlManager->GetAnswerCardText(
+				networkManager->answerInfo[i].submittedAnswer) endline
+		}
+		printout << "\n : Game : Select the best answer!" endline
+	}
+	else
+	{
+		printout << " : Game : Waiting for leader to select a winning answer." endline
+	}
+}
+
+// Displays all answers cards, to all players - as well a s
+void GameManager::DisplayAnswersAndWinner(int _winnerReference)
+{
+	system("cls");
+	printout << xmlManager->GetQuestionCardText(currentQuestionCard) endline
+	// Iterate through all submitted answers
+	for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+	{
+		int tempInt = networkManager->answerInfo[i].submittedAnswer;
+		// Ensure we display the winning card last
+		if (tempInt != _winnerReference)
+		{
+			printout << " -> " << xmlManager->GetAnswerCardText(tempInt) endline
+		}
+	}
+	// Display winning answer
+	printout << " And the winner is: " << xmlManager->GetAnswerCardText(_winnerReference) endline
+}
+
+// Award a point to this player
+void GameManager::AwardPoint()
+{
+	points += 1;
 }
 
 void GameManager::Shutdown()

@@ -28,7 +28,8 @@ enum GameMessages
 	ID_DEAL_CARD_TO_PLAYER =  ID_TO_CLIENT_MESSAGE + 5,
 	ID_SEND_ANSWER_CARD =  ID_TO_CLIENT_MESSAGE + 6,
 	ID_START_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 7,
-	ID_ASSIGN_QUESTION_ASKER = ID_TO_CLIENT_MESSAGE + 8
+	ID_ASSIGN_QUESTION_ASKER = ID_TO_CLIENT_MESSAGE + 8,
+	ID_AWARD_POINT = ID_TO_CLIENT_MESSAGE + 9
 };
 
 // Stores information for each submitted answer each round
@@ -44,7 +45,17 @@ struct AnswerInfo
 
 class NetworkManager
 {
+private:
+	static const unsigned int MAX_CONNECTIONS = 8;
+	static const unsigned int MIN_CONNECTIONS = 3;
+	static const unsigned int PORT = 60000;
+
 public:
+	// Stores player info regarding address, name, score, etc
+	AnswerInfo answerInfo[MAX_CONNECTIONS];
+	// Access the list of machines connected to the host
+	SystemAddress GetConnectedMachine(int _playerNum);
+	
 	NetworkManager(GameManager* _game);
 	~NetworkManager() { Destroy(); }
 
@@ -68,31 +79,21 @@ public:
 	void PeerToPeerMessage(std::string _name, GameMessages _messageType, SystemAddress _address, int _cardValue = -1, bool _broadcast = false);
 	// Set an event flag for this client
 	void SetEventState(GameMessages _event, bool _isReady);
-	// Access the list of machines connected to the host
-	SystemAddress GetConnectedMachine(int _playerNum);
 	// Get number of systems connected
 	unsigned short GetNumberOfConnections() { return numberOfSystems; }
-	// Close and shutdown the servers
-	void Destroy();
 	
 	bool IsHost() { return bIsHost; }
+	
+	// Close and shutdown the servers
+	void Destroy();
 
-	// Queue of functions and parameters to be called
-	// This is added to inside network update and called
-	// outside of it for concurrency issues
-//	std::vector<void (*func)(int), int> queue;
 private:
-	static const unsigned int MAX_CONNECTIONS = 8;
-	static const unsigned int MIN_CONNECTIONS = 3;
-	static const unsigned int PORT = 60000;
-
 	// List of addresses connected to host
 	SystemAddress remoteSystems[MAX_CONNECTIONS];
 	unsigned short numberOfSystems;
 	GameManager* game;
 	
-	// Stores player info regarding address, name, score, etc
-	AnswerInfo answerInfo[MAX_CONNECTIONS];
+	
 	// Tracks how many answers have been submitted
 	int totalAnswersReceived;
 	// Has the game started - no more joiners
