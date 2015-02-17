@@ -5,8 +5,10 @@ NetworkManager::NetworkManager(GameManager* _game)
 	: rakPeer(0), 
 	bIsHost(false),
 	bGameStarted(false),
+	bIsNewRoundReady(false),
 	game(_game),
-	totalAnswersReceived(0)
+	totalAnswersReceived(0),
+	currentQuestionAsker(0)
 
 {
 	printf("Networking enabled.\n");
@@ -57,9 +59,11 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	}
 	else
 	{
-		// car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		//car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
 		// Temp line for faster testing on my home PC
-		car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		// car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		// Temp line for testing on school pc
+		car = rakPeer->Connect("10.10.106.213", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
 	printf("Attempting to connect to %s...\n", _ip);
@@ -123,7 +127,7 @@ void NetworkManager::CheckPackets()
 	std::string playerName;
 	int cardVal;
 	GameMessages messageType;
-	
+	RakNet::BitStream bOut;
 	while (rakPeer)
 	{
 		Packet *p = rakPeer->Receive();
@@ -135,6 +139,11 @@ void NetworkManager::CheckPackets()
 			// Custom defined events
 			// Assign someone as the question asker
 			case ID_REPLY_CHOICE:
+				// If I am the host, broadcast this message to everyone
+		/*		if (bIsHost)
+				{
+					rakPeer->Send(&bitStream,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
+				}*/
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
 				game->DisplayAnswersAndWinner(cardVal);
@@ -144,14 +153,16 @@ void NetworkManager::CheckPackets()
 				game->AwardPoint();
 				break;
 			// Assign someone as the question asker
-			case ID_ASSIGN_QUESTION_ASKER:
+			case ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST:
 				// Flag this player as having submitted an answer
 				// since they do not get to submit while reading the question
+				bIsNewRoundReady = true;
 				SetEventState(ID_SEND_ANSWER_CARD, true);
 				game->MakeQuestionAsker();
 				break;
 			// When a player sends their cards to the host
 			case ID_SEND_ANSWER_CARD:
+				// If I am the host, broadcast this card to everyone
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				// Read in the card reference value for the answer
 				bitStream.Read(cardVal);
@@ -161,6 +172,7 @@ void NetworkManager::CheckPackets()
 				answerInfo[totalAnswersReceived].playerName = playerName;
 				// Store IP address this answer came from
 				answerInfo[totalAnswersReceived].address = p->systemAddress;
+				totalAnswersReceived++;
 				break;
 			// When receiving a card from the host
 			case ID_DEAL_CARD_TO_PLAYER:
@@ -170,10 +182,13 @@ void NetworkManager::CheckPackets()
 				break;
 			// When receiving a ready to play message
 			case ID_READY_TO_PLAY:
-				bitStream.IgnoreBytes(sizeof(MessageID));
-				bitStream.Read(cardVal);
-				bitStream.Read(playerName);
-				printout << ": Network : " << playerName << " is ready to play." endline
+				if (bGameStarted == false)
+				{
+					bitStream.IgnoreBytes(sizeof(MessageID));
+					bitStream.Read(cardVal);
+					bitStream.Read(playerName);
+					printout << ": Network : " << playerName << " is ready to play." endline
+				}
 				break;
 			// When receiving the start next round message (should broadcast from host)
 			case ID_START_NEXT_ROUND:
@@ -185,14 +200,16 @@ void NetworkManager::CheckPackets()
 				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
-				printout << ": Network : A Player is joining..." endline
+				printout << ": Network : A player has joined." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
+				readyEventPlugin.AddToWaitList(ID_READY_FOR_NEXT_ROUND, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 				printout << ": Network : Joining game..." endline
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
+				readyEventPlugin.AddToWaitList(ID_READY_FOR_NEXT_ROUND, p->guid);
 				break;
 			case ID_READY_EVENT_ALL_SET:
 				bitStream.IgnoreBytes(sizeof(MessageID));
@@ -217,7 +234,44 @@ void NetworkManager::CheckPackets()
 					break;
 				// Everyone has submitted an answer card
 				case ID_SEND_ANSWER_CARD:
-					game->ShowAnswerCardsToAsker();
+					if (bIsNewRoundReady == false)
+					{
+						game->ShowAnswerCardsToAsker();
+						bIsNewRoundReady = true;
+					}
+					break;
+				// Everyone is ready to start a new round
+				case ID_READY_FOR_NEXT_ROUND:
+					// If I am the host, select a new question asker
+					if (bIsHost)
+					{
+						if (bIsNewRoundReady == true)
+						{
+							bOut.Write(ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
+							// Increment question asker index, and clamp to bounds
+							currentQuestionAsker++;
+							// If capped, I am the question asker
+							if (currentQuestionAsker >= numberOfSystems)
+							{
+								currentQuestionAsker = 0;
+								game->MakeQuestionAsker();
+							}
+							// Otherwise, assign a remote system as asker
+							else
+							{
+								rakPeer->Send(&bOut, HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[currentQuestionAsker], false);
+							}
+							Sleep(30);
+							// Then broadcast the start round event
+
+							PeerToPeerMessage(playerName, 
+								ID_START_NEXT_ROUND, 
+								UNASSIGNED_SYSTEM_ADDRESS, 
+								game->GetNextQuestionCard(), 
+								true);
+						}
+					}
+					bIsNewRoundReady = false;
 					break;
 				}
 				break;
@@ -246,7 +300,6 @@ void NetworkManager::CheckPackets()
 				printf(": Network : ID_REMOTE_CONNECTION_LOST\n");
 				break;
 			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf(": Network : ID_REMOTE_NEW_INCOMING_CONNECTION\n");
 				break;
 			case ID_CONNECTION_BANNED: // Banned from this server
 				printf(": Network : We are banned from this server.\n");

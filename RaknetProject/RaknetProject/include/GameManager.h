@@ -64,6 +64,8 @@ public:
 	void AwardPoint();
 	// Show the answers to all players and the winning answer
 	void DisplayAnswersAndWinner(int _winnerReference);
+	// Get the next question card value
+	int GetNextQuestionCard();
     // Return the player name - used with server messages
 	std::string GetPlayerName() { return playerName; }
 
@@ -102,8 +104,8 @@ private:
 
 	// Shuffle decks of cards before beginning play
 	void ShuffleDecks();
-	// Deal a new card to client
-	void DealCardToClient();
+	// Deal the specified number of cards to all systems
+	void DealPlayersXCards(int _x);
 	// Convert char input to an int
 	int InputToInt(char _in) { return _in - 48; }
 };

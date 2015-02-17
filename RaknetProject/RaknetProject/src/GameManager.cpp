@@ -52,13 +52,13 @@ void GameManager::KeyPress(const char _ch)
 			// Grab that card reference number
 			int temp = RemoveCardFromHand(tempInt);
 			// Let the user know they have played that card
-			printout << "\n : Game : You submitted the following card: " 
+			printout << "\n : Game : You submitted the following card -> " 
 				<< xmlManager->GetAnswerCardText(temp) endline
 			// Forward card selection to server
 			networkManager->PeerToPeerMessage(playerName, 
 				ID_SEND_ANSWER_CARD,
-				networkManager->GetConnectedMachine(0), 
-				temp, 
+				UNASSIGNED_SYSTEM_ADDRESS,
+				temp,
 				true);
 			networkManager->SetEventState(ID_SEND_ANSWER_CARD, true);
 			state = WAITING_FOR_PLAYERS;
@@ -74,26 +74,31 @@ void GameManager::KeyPress(const char _ch)
 			// Was the selected value within range of player count
 			if (tempInt >= 0 && tempInt < networkManager->GetNumberOfConnections())
 			{
-				// Sends reply that was selected to all players
-				networkManager->PeerToPeerMessage(playerName, 
-				ID_REPLY_CHOICE,
-				networkManager->GetConnectedMachine(0), 
-				tempInt, 
-				true);
+				state = SCORING;
+				bIsQuestionAsker = false;
+				
 				// Sends award point message to winning player
 				networkManager->PeerToPeerMessage(playerName, 
 				ID_AWARD_POINT, 
 				networkManager->answerInfo[tempInt].address);
+
+				// Sends reply that was selected to all players
+				networkManager->PeerToPeerMessage(playerName, 
+				ID_REPLY_CHOICE,
+				UNASSIGNED_SYSTEM_ADDRESS,
+				networkManager->answerInfo[tempInt].submittedAnswer, 
+				true);
+				
+				DisplayAnswersAndWinner(networkManager->answerInfo[tempInt].submittedAnswer);
 			}
 		}
 	}
 	// If we are in the scoring state
 	else if (state == SCORING)
 	{
-		// And this is the host client
-		if (bIsHostClient == true)
+		if (_ch == 'r' || _ch == 'R')
 		{
-			// Then get an answer for the best card
+			networkManager->SetEventState(ID_READY_FOR_NEXT_ROUND, true);
 		}
 	}
 }
@@ -102,8 +107,6 @@ void GameManager::KeyPress(const char _ch)
 void GameManager::AddCardToHand(int _cardNum)
 {
 	cards.push_back(_cardNum);
-	if (cards.size() > 2)
-		DisplayCards();
 }
 
 // Return a card number from their hand to pass to server
@@ -126,9 +129,30 @@ int GameManager::RemoveCardFromHand(int _choice)
 }
 
 // Sends a card to a specified player
-void GameManager::DealCardToClient()
+void GameManager::DealPlayersXCards(int _x)
 {
-
+	// If this is the host
+	if (networkManager->IsHost() == true)
+	{
+		// And then send cards to all systems
+		for (int i = 0; i < _x; i++)
+		{
+			// Give myself a card
+			AddCardToHand(answerDeck[topAnswerCard%answerDeck.size()]);
+			topAnswerCard++;
+			for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+			{
+				// Send a peer to peer message to a specific client
+				// get machine address from manager
+				// and get card value from top of card answer deck
+				networkManager->PeerToPeerMessage(playerName, 
+					ID_DEAL_CARD_TO_PLAYER,
+					networkManager->GetConnectedMachine(i), 
+					answerDeck[topAnswerCard%answerDeck.size()]);
+				topAnswerCard++;
+			}
+		}
+	}
 }
 
 // Clears screen and displays info for this round
@@ -136,11 +160,25 @@ void GameManager::StartNextRound(int _questionCard)
 {
 	state = SUBMIT_ANSWER;
 	DisplayCards();
-
 	printout << "\n - A new round has begun. -" endline
-	printout << "\n: Game : Complete the following. " endline
+		
+	if (bIsQuestionAsker == false)
+	{
+		printout << "\n: Game : Complete the following." endline
+	}
+
 	// Printout the question for this round
-	printout << "\n->" << xmlManager->GetQuestionCardText(_questionCard) endline
+	currentQuestionCard = _questionCard;
+	printout << "\n->" << xmlManager->GetQuestionCardText(currentQuestionCard) endline
+
+	// If this is the question asker, then they do not get to select a card
+	// and go immediately to waiting for other players to submit
+	if (bIsQuestionAsker == true)
+	{
+		state = WAITING_FOR_ANSWERS;
+		networkManager->SetEventState(ID_SEND_ANSWER_CARD, true);
+		printout << "\n Waiting for answers..." endline
+	}
 }
 
 // Clear screen, let players know the game has started
@@ -154,34 +192,13 @@ void GameManager::StartGame()
 	if (networkManager->IsHost() == true)
 	{
 		bIsQuestionAsker = true;
-		// First deal 3 cards to self from back of answer vector
-		for (int i = 0; i < 3; i++)
-		{
-			AddCardToHand(answerDeck[topAnswerCard%answerDeck.size()]);
-			topAnswerCard++;
-		}
-		// Next do the same for each connected system
-		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
-		{
-			// Each system needs 3 cards
-			for (int j = 0; j < 3; j++)
-			{
-				// Send a peer to peer message to a specific client
-				// get machine address from manager
-				// and get card value from top of card answer deck
-				networkManager->PeerToPeerMessage(playerName, 
-					ID_DEAL_CARD_TO_PLAYER,
-					networkManager->GetConnectedMachine(i), 
-					answerDeck[topAnswerCard%answerDeck.size()]);
-				topAnswerCard++;
-			}
-		}
+		DealPlayersXCards(3);
 		// Send message to start the round, along with 
 		// number of next question card
 		currentQuestionCard = questionDeck[topQuestionCard%questionDeck.size()];
 		networkManager->PeerToPeerMessage(playerName, 
 			ID_START_NEXT_ROUND, 
-			networkManager->GetConnectedMachine(0),
+			UNASSIGNED_SYSTEM_ADDRESS,
 			currentQuestionCard,
 			true);
 		// Call start round on host, rather than sending a message to myself
@@ -261,7 +278,6 @@ void GameManager::Init()
 	{
 		ShuffleDecks();
 	}
-	system("cls");
 	// Wait for a key press
 	printout << ": " << playerName << " : Press Enter when you are ready to play." endline
 	getchar();
@@ -272,7 +288,8 @@ void GameManager::Init()
 		networkManager->GetConnectedMachine(0),
 		-1, 
 		true);
-	printout << ": " << playerName << " : Your are ready." endline
+	system("cls");
+	printout << ": " << playerName << " : You are ready." endline
 }
 
 // Populate and shuffle the decks
@@ -300,15 +317,15 @@ void GameManager::ShuffleDecks()
 // Print out answer cards to question asker
 void GameManager::ShowAnswerCardsToAsker()
 {
-	state = SELECTING_BEST_ANSWER;
 	if (bIsQuestionAsker == true)
 	{
-		for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+		state = SELECTING_BEST_ANSWER;
+		printout << "\n : Game : Select the best answer!" endline
+		for (int i = 0; i < networkManager->GetNumberOfAnswers(); i++)
 		{
 			printout << " : " << i+1 << " : " << xmlManager->GetAnswerCardText(
 				networkManager->answerInfo[i].submittedAnswer) endline
 		}
-		printout << "\n : Game : Select the best answer!" endline
 	}
 	else
 	{
@@ -322,19 +339,26 @@ void GameManager::DisplayAnswersAndWinner(int _winnerReference)
 	system("cls");
 	printout << xmlManager->GetQuestionCardText(currentQuestionCard) endline
 	// Iterate through all submitted answers
-	for (int i = 0; i < networkManager->GetNumberOfConnections(); i++)
+	for (int i = 0; i < networkManager->GetNumberOfAnswers(); i++)
 	{
 		int tempInt = networkManager->answerInfo[i].submittedAnswer;
-		// Ensure we display the winning card last
-		if (tempInt != _winnerReference)
-		{
-			printout << " -> " << xmlManager->GetAnswerCardText(tempInt) endline
-		}
+		printout << i + 1 << " -> " << xmlManager->GetAnswerCardText(tempInt) endline
 	}
 	// Display winning answer
-	printout << " And the winner is: " << xmlManager->GetAnswerCardText(_winnerReference) endline
+	printout << " And the winner is -> " << xmlManager->GetAnswerCardText(_winnerReference) endline
+	printout << "\n\n : Game : Press R to start next round." endline
+	state = SCORING;
+	bIsQuestionAsker = false;
+	// Send everyone 1 additional card
+	DealPlayersXCards(1);
 }
 
+// Returns the xml reference value of the next card value
+int GameManager::GetNextQuestionCard()
+{
+	currentQuestionCard++;
+	return currentQuestionCard%questionDeck.size();
+}
 // Award a point to this player
 void GameManager::AwardPoint()
 {

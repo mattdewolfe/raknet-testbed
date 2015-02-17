@@ -28,8 +28,9 @@ enum GameMessages
 	ID_DEAL_CARD_TO_PLAYER =  ID_TO_CLIENT_MESSAGE + 5,
 	ID_SEND_ANSWER_CARD =  ID_TO_CLIENT_MESSAGE + 6,
 	ID_START_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 7,
-	ID_ASSIGN_QUESTION_ASKER = ID_TO_CLIENT_MESSAGE + 8,
-	ID_AWARD_POINT = ID_TO_CLIENT_MESSAGE + 9
+	ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST = ID_TO_CLIENT_MESSAGE + 8,
+	ID_AWARD_POINT = ID_TO_CLIENT_MESSAGE + 9,
+	ID_READY_FOR_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 10
 };
 
 // Stores information for each submitted answer each round
@@ -81,7 +82,7 @@ public:
 	void SetEventState(GameMessages _event, bool _isReady);
 	// Get number of systems connected
 	unsigned short GetNumberOfConnections() { return numberOfSystems; }
-	
+	unsigned short GetNumberOfAnswers() { return totalAnswersReceived; }
 	bool IsHost() { return bIsHost; }
 	
 	// Close and shutdown the servers
@@ -96,10 +97,14 @@ private:
 	
 	// Tracks how many answers have been submitted
 	int totalAnswersReceived;
+	// Track the current question asker
+	int currentQuestionAsker;
 	// Has the game started - no more joiners
 	bool bGameStarted;
-	// Is this the host machine?
+	// Is this the host machine
 	bool bIsHost;
+	// Is the new round ready to start
+	bool bIsNewRoundReady;
 
 	// Raknet variables - key to standard networking, event system, and connected graph
 	RakPeerInterface *rakPeer;
