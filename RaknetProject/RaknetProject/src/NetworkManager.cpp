@@ -69,9 +69,9 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	{
 		//car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
 		// Temp line for faster testing on my home PC
-		// car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		 car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 		// Temp line for testing on school pc
-		car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
+		// car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
 	printf("Attempting to connect to %s...\n", _ip);
@@ -104,6 +104,7 @@ void NetworkManager::PeerToPeerMessage(std::string _name, GameMessages _messageT
 		{
 			AddAnswerInfo(_cardValue, _name, _address);
 		}
+		assert(_messageType != ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
 		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,UNASSIGNED_SYSTEM_ADDRESS,true);
 	}
 	else 
@@ -140,7 +141,7 @@ void NetworkManager::CheckPackets()
 	std::string playerName;
 	int cardVal;
 	GameMessages messageType;
-	RakNet::BitStream bOut;
+
 	while (rakPeer)
 	{
 		Packet *p = rakPeer->Receive();
@@ -150,13 +151,8 @@ void NetworkManager::CheckPackets()
 			switch (p->data[0])
 			{
 			// Custom defined events
-			// Assign someone as the question asker
+			// Receive the winning card selection
 			case ID_REPLY_CHOICE:
-				// If I am the host, broadcast this message to everyone
-		/*		if (bIsHost)
-				{
-					rakPeer->Send(&bitStream,HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true);
-				}*/
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
 				game->DisplayAnswersAndWinner(cardVal);
@@ -167,9 +163,7 @@ void NetworkManager::CheckPackets()
 				break;
 			// Assign someone as the question asker
 			case ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST:
-				// Flag this player as having submitted an answer
-				// since they do not get to submit while reading the question
-				SetEventState(ID_SEND_ANSWER_CARD, true);
+				// Sets gameplay flag marking this player as question asker
 				game->MakeQuestionAsker();
 				break;
 			// When a player sends their cards to the host
@@ -202,6 +196,7 @@ void NetworkManager::CheckPackets()
 			// When receiving the start next round message (should broadcast from host)
 			case ID_START_NEXT_ROUND:
 				SetEventState(ID_SEND_ANSWER_CARD, false);
+				SetEventState(ID_READY_FOR_NEXT_ROUND, false);
 				totalAnswersReceived = 0;
 				bitStream.IgnoreBytes(sizeof(MessageID));
 				bitStream.Read(cardVal);
@@ -268,16 +263,26 @@ void NetworkManager::CheckPackets()
 							// Otherwise, assign a remote system as asker
 							else
 							{
-								bOut.Write(ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
-								rakPeer->Send(&bOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[currentQuestionAsker], false);
+								PeerToPeerMessage("Host", 
+									ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST, 
+									remoteSystems[currentQuestionAsker]);
 							}
-							// Then broadcast the start round event
+							Sleep(60);
+
+							// Re setup our ready events
+							SetEventState(ID_SEND_ANSWER_CARD, false);
+							SetEventState(ID_READY_FOR_NEXT_ROUND, false);
+							// Get new card value
 							int nextCard = game->GetNextQuestionCard();
+							// Reset size of answer info array
+							totalAnswersReceived = 0;
+							// Send message to clients to start new round
 							PeerToPeerMessage(playerName,
 								ID_START_NEXT_ROUND,
 								UNASSIGNED_SYSTEM_ADDRESS,
 								nextCard,
 								true);
+							// Start a new round on this machine
 							game->StartNextRound(nextCard);
 						}
 					}

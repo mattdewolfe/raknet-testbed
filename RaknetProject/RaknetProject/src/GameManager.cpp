@@ -20,9 +20,28 @@ GameManager::~GameManager(void)
 
 }
 
-void GameManager::DisplayCards()
+void GameManager::SelectBestAnswer(int _inputVal)
 {
+	// Was the selected value within range of player count
+	if (_inputVal >= 0 && _inputVal < networkManager->GetNumberOfConnections())
+	{
+		state = SCORING;
+		bIsQuestionAsker = false;
+				
+		// Sends award point message to winning player
+		networkManager->PeerToPeerMessage(playerName, 
+		ID_AWARD_POINT,
+		networkManager->answerInfo[_inputVal].address);
 
+		// Sends reply that was selected to all players
+		networkManager->PeerToPeerMessage(playerName, 
+		ID_REPLY_CHOICE,
+		UNASSIGNED_SYSTEM_ADDRESS,
+		networkManager->answerInfo[_inputVal].submittedAnswer, 
+		true);
+				
+		DisplayAnswersAndWinner(networkManager->answerInfo[_inputVal].submittedAnswer);
+	}
 }
 
 // Takes in answer value and sends to peers
@@ -49,7 +68,6 @@ void GameManager::SubmitAnswer(int _inputVal)
 // Should loop listening for key input and calling function as needed
 void GameManager::KeyPress(const char _ch)
 {
-	printout << _ch;
 	// Iterate through key press options and take action based on that
 	if (_ch == 'p' || _ch == 'P')
 	{
@@ -70,26 +88,7 @@ void GameManager::KeyPress(const char _ch)
 		{
 			// Convert this to an int for index access
 			int tempInt = InputToInt(_ch) - 1;
-			// Was the selected value within range of player count
-			if (tempInt >= 0 && tempInt < networkManager->GetNumberOfConnections())
-			{
-				state = SCORING;
-				bIsQuestionAsker = false;
-				
-				// Sends award point message to winning player
-				networkManager->PeerToPeerMessage(playerName, 
-				ID_AWARD_POINT,
-				networkManager->answerInfo[tempInt].address);
-
-				// Sends reply that was selected to all players
-				networkManager->PeerToPeerMessage(playerName, 
-				ID_REPLY_CHOICE,
-				UNASSIGNED_SYSTEM_ADDRESS,
-				networkManager->answerInfo[tempInt].submittedAnswer, 
-				true);
-				
-				DisplayAnswersAndWinner(networkManager->answerInfo[tempInt].submittedAnswer);
-			}
+			SelectBestAnswer(tempInt);
 		}
 	}
 	// If we are in the scoring state
@@ -97,6 +96,7 @@ void GameManager::KeyPress(const char _ch)
 	{
 		if (_ch == 'r' || _ch == 'R')
 		{
+			bIsQuestionAsker = false;
 			networkManager->SetEventState(ID_READY_FOR_NEXT_ROUND, true);
 		}
 	}

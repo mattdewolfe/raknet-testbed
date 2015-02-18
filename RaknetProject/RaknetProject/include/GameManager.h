@@ -56,8 +56,6 @@ public:
 	void Shutdown();
 	// Ask the player to enter their name
 	void RequestPlayerName();
-	// Print out answer cards to question asker
-	void DisplayCards();
 	// Send answer to master
 	void SubmitAnswer(int _inputVal);
 	// Show answer cards to the question asker, to pick from
@@ -103,7 +101,8 @@ private:
 	int topAnswerCard, topQuestionCard;
 	// Store xml reference value of current question
 	int currentQuestionCard;
-
+	// Called when question asker selects answer
+	void SelectBestAnswer(int _inputVal);
 	// Clear screen, draw basic information layout
 	void DrawScreenUI();
 	// Shuffle decks of cards before beginning play
