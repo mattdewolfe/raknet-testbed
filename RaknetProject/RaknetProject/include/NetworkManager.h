@@ -30,7 +30,8 @@ enum GameMessages
 	ID_START_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 7,
 	ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST = ID_TO_CLIENT_MESSAGE + 8,
 	ID_AWARD_POINT = ID_TO_CLIENT_MESSAGE + 9,
-	ID_READY_FOR_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 10
+	ID_READY_FOR_NEXT_ROUND = ID_TO_CLIENT_MESSAGE + 10,
+	ID_GAME_OVER = ID_TO_CLIENT_MESSAGE + 11
 };
 
 // Stores information for each submitted answer each round
@@ -108,6 +109,8 @@ private:
 	bool bIsHost;
 	// Is the new round ready to start
 	bool bIsNewRoundReady;
+	// Has the sent card event happened
+	bool bIsCardSent;
 
 	// Raknet variables - key to standard networking, event system, and connected graph
 	RakPeerInterface *rakPeer;

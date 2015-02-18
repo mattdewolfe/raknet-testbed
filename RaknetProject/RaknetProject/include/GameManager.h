@@ -26,6 +26,8 @@ enum GAME_STATE
 	WAITING_FOR_PLAYERS,
 	SELECTING_BEST_ANSWER,
 	SCORING,
+	YOU_WIN,
+	YOU_LOSE,
 	QUIT
 };
 
@@ -66,6 +68,8 @@ public:
 	void DisplayAnswersAndWinner(int _winnerReference);
 	// Get the next question card value
 	int GetNextQuestionCard();
+	// Display game over screen to players, with winning players name
+	void GameOverScreen(std::string _winningPlayer);
     // Return the player name - used with server messages
 	std::string GetPlayerName() { return playerName; }
 

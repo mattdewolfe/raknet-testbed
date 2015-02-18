@@ -87,8 +87,7 @@ std::string XMLScriptManager::GetStringVariableFromScript(char* _node, const cha
 
 bool XMLScriptManager::Init()
 {
-	LoadScript("xml\\CardsAgainstHumanity.xml");
-	return true;
+	return LoadScript("xml\\CardsAgainstHumanity.xml");
 }
 
 bool XMLScriptManager::LoadScript(const char* _fileName)
@@ -98,7 +97,7 @@ bool XMLScriptManager::LoadScript(const char* _fileName)
 	{
 		doc.parse<0>(xmlFile->data());
 	}
-	return false;
+	return true;
 }
 
 void XMLScriptManager::Update(float _dt)

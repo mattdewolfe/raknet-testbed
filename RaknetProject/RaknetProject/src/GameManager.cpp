@@ -16,9 +16,7 @@ GameManager::GameManager(void) :
 }
 
 GameManager::~GameManager(void)
-{
-
-}
+{}
 
 void GameManager::SelectBestAnswer(int _inputVal)
 {
@@ -246,7 +244,9 @@ void GameManager::ListenForInput()
 // and ensure they don't want their name to be network, like a silly chump
 void GameManager::RequestPlayerName()
 {
-	printout << "Enter your name: ";
+	system("cls");
+	printout << " - - - - - - -  Offensive Card Game #213  - - - - - - -" endline
+	printout << " : Game : Enter your name: ";
 	std::cin >> playerName;
 	std::cin.clear();
 	// Get a temp to clear return key
@@ -271,7 +271,7 @@ void GameManager::Init()
 
 	// Ask player for IP address to connect to
 	char ip[256];
-	printout << "Enter host IP address (or press enter to host): ";
+	printout << " : Network : Enter host IP address (or press enter to host): ";
 	gets_s(ip);
 	// List active connections
 	if (ip[0] == 0)
@@ -296,7 +296,7 @@ void GameManager::Init()
 		ShuffleDecks();
 	}
 	// Wait for a key press
-	printout << ": " << playerName << " : Press Enter when you are ready to play." endline
+	printout << " : " << playerName << " : Press Enter when you are ready to play." endline
 	getchar();
 	// Once hit, let the other clients know this player is ready
 	networkManager->SetEventState(GameMessages::ID_READY_TO_PLAY, true);
@@ -306,7 +306,7 @@ void GameManager::Init()
 		-1, 
 		true);
 	system("cls");
-	printout << ": " << playerName << " : You are ready." endline
+	printout << " : " << playerName << " : You are ready." endline
 }
 
 // Populate and shuffle the decks
@@ -339,6 +339,7 @@ void GameManager::ShowAnswerCardsToAsker()
 	{
 		state = SELECTING_BEST_ANSWER;
 		printout << "\n : Game : Select the best answer!" endline
+		printout << "\n->" << xmlManager->GetQuestionCardText(currentQuestionCard) endline
 		for (int i = 0; i < networkManager->GetNumberOfAnswers(); i++)
 		{
 			printout << " : " << i+1 << " : " << xmlManager->GetAnswerCardText(
@@ -381,6 +382,24 @@ int GameManager::GetNextQuestionCard()
 void GameManager::AwardPoint()
 {
 	points += 1;
+	if (points >= 3)
+	{
+		state = YOU_WIN;
+		networkManager->PeerToPeerMessage(playerName, ID_GAME_OVER, UNASSIGNED_SYSTEM_ADDRESS, -1, true);
+		GameOverScreen("You");
+	}
+}
+
+void GameManager::GameOverScreen(std::string _winningPlayer)
+{
+	state = YOU_LOSE;
+	
+	system("cls");
+	printout << " - - - - - - -  Offensive Card Game #213  - - - - - - -" endline
+	printout << " - " endline
+	printout << " - " << _winningPlayer << " won the game!" endline
+	printout << "\n\n\n - Press P to quit." endline
+
 }
 
 void GameManager::Shutdown()

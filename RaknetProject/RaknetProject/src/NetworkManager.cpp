@@ -6,12 +6,13 @@ NetworkManager::NetworkManager(GameManager* _game)
 	bIsHost(false),
 	bGameStarted(false),
 	bIsNewRoundReady(false),
+	bIsCardSent(false),
 	game(_game),
 	totalAnswersReceived(0),
-	currentQuestionAsker(0)
+	currentQuestionAsker(-1)
 
 {
-	printf("Networking enabled.\n");
+	printf(" - Networking enabled - .\n");
 }
 
 void NetworkManager::Init(bool _isHost)
@@ -31,12 +32,12 @@ void NetworkManager::Init(bool _isHost)
 	SocketDescriptor sd(PORT,0);
 	while (IRNS2_Berkley::IsPortInUse(sd.port,sd.hostAddress,sd.socketFamily,SOCK_DGRAM)==true)
 	{
-		printf("Port %d in use, checking next... \n", sd.port);
+		printf(" : Network : Port %d in use, checking next... \n", sd.port);
 		sd.port++;
 	}
 	StartupResult sr = rakPeer->Startup(MAX_CONNECTIONS, &sd, 1);
 	RakAssert(sr==RAKNET_STARTED);
-	printf("Networking initialized on port %d.\n", sd.port);
+	printf(" : Network : Initialized on port %d.\n", sd.port);
 	// Give time for threads to startup
 	RakSleep(100);
 }
@@ -67,14 +68,14 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	}
 	else
 	{
-		//car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
 		// Temp line for faster testing on my home PC
-		 car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		// car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 		// Temp line for testing on school pc
 		// car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
-	printf("Attempting to connect to %s...\n", _ip);
+	printout << " : Network : Attempting to connect to " << _ip << "..." endline
 	return true;
 }
 
@@ -141,8 +142,8 @@ void NetworkManager::CheckPackets()
 	std::string playerName;
 	int cardVal;
 	GameMessages messageType;
-
-	while (rakPeer)
+	bool looping = true;
+	while (looping)
 	{
 		Packet *p = rakPeer->Receive();
 		if (p)
@@ -151,6 +152,14 @@ void NetworkManager::CheckPackets()
 			switch (p->data[0])
 			{
 			// Custom defined events
+			// A player has won the game
+			case ID_GAME_OVER:
+				looping = false;
+				bitStream.IgnoreBytes(sizeof(MessageID));
+				bitStream.Read(cardVal);
+				bitStream.Read(playerName);
+				game->GameOverScreen(playerName);
+				break;
 			// Receive the winning card selection
 			case ID_REPLY_CHOICE:
 				bitStream.IgnoreBytes(sizeof(MessageID));
@@ -195,6 +204,7 @@ void NetworkManager::CheckPackets()
 				break;
 			// When receiving the start next round message (should broadcast from host)
 			case ID_START_NEXT_ROUND:
+				bIsCardSent = false;
 				SetEventState(ID_SEND_ANSWER_CARD, false);
 				SetEventState(ID_READY_FOR_NEXT_ROUND, false);
 				totalAnswersReceived = 0;
@@ -238,20 +248,24 @@ void NetworkManager::CheckPackets()
 					break;
 				// Everyone has submitted an answer card
 				case ID_SEND_ANSWER_CARD:
-					if (bIsNewRoundReady == false)
+					if (bIsCardSent == false)
 					{
-						bIsNewRoundReady = true;
+						bIsCardSent = true;
+						bIsNewRoundReady = false;
 						game->ShowAnswerCardsToAsker();
 					}
 					break;
 				// Everyone is ready to start a new round
 				case ID_READY_FOR_NEXT_ROUND:
-					// If I am the host, select a new question asker
-					if (bIsNewRoundReady == true)
+					// Flag so actions only happen once
+					if (bIsNewRoundReady == false)
 					{
-						bIsNewRoundReady = false;
+						SetEventState(ID_SEND_ANSWER_CARD, false);
+						SetEventState(ID_READY_FOR_NEXT_ROUND, false);
+						bIsNewRoundReady = true;
 						if (bIsHost == true)
 						{
+							bIsCardSent = false;
 							// Increment question asker index, and clamp to bounds
 							currentQuestionAsker++;
 							// If capped, I am the question asker
@@ -267,11 +281,6 @@ void NetworkManager::CheckPackets()
 									ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST, 
 									remoteSystems[currentQuestionAsker]);
 							}
-							Sleep(60);
-
-							// Re setup our ready events
-							SetEventState(ID_SEND_ANSWER_CARD, false);
-							SetEventState(ID_READY_FOR_NEXT_ROUND, false);
 							// Get new card value
 							int nextCard = game->GetNextQuestionCard();
 							// Reset size of answer info array
@@ -298,45 +307,45 @@ void NetworkManager::CheckPackets()
 
 			case ID_DISCONNECTION_NOTIFICATION:
 				// Connection lost normally
-				printf(": Network : ID_DISCONNECTION_NOTIFICATION\n");
+				printf(" : Network : ID_DISCONNECTION_NOTIFICATION\n");
 				break;
 			case ID_ALREADY_CONNECTED:
 				// Connection lost normally
-				printf(": Network : ID_ALREADY_CONNECTED with guid %" PRINTF_64_BIT_MODIFIER "u\n", p->guid);
+				printf(" : Network : ID_ALREADY_CONNECTED with guid %" PRINTF_64_BIT_MODIFIER "u\n", p->guid);
 				break;
 			case ID_INCOMPATIBLE_PROTOCOL_VERSION:
-				printf(": Network : ID_INCOMPATIBLE_PROTOCOL_VERSION\n");
+				printf(" : Network : ID_INCOMPATIBLE_PROTOCOL_VERSION\n");
 				break;
 			case ID_REMOTE_DISCONNECTION_NOTIFICATION: // Server telling the clients of another client disconnecting gracefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf(": Network : ID_REMOTE_DISCONNECTION_NOTIFICATION\n"); 
+				printf(" : Network : ID_REMOTE_DISCONNECTION_NOTIFICATION\n"); 
 				break;
 			case ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-				printf(": Network : ID_REMOTE_CONNECTION_LOST\n");
+				printf(" : Network : ID_REMOTE_CONNECTION_LOST\n");
 				break;
 			case ID_REMOTE_NEW_INCOMING_CONNECTION: // Server telling the clients of another client connecting.  You can manually broadcast this in a peer to peer enviroment if you want.
 				break;
 			case ID_CONNECTION_BANNED: // Banned from this server
-				printf(": Network : We are banned from this server.\n");
+				printf(" : Network : We are banned from this server.\n");
 				break;			
 			case ID_CONNECTION_ATTEMPT_FAILED:
-				printf(": Network : Connection attempt failed\n");
+				printf(" : Network : Connection attempt failed\n");
 				break;
 			case ID_NO_FREE_INCOMING_CONNECTIONS:
 				// Sorry, the server is full.  I don't do anything here but
 				// A real app should tell the user
-				printf(": Network : ID_NO_FREE_INCOMING_CONNECTIONS\n");
+				printf(" : Network : ID_NO_FREE_INCOMING_CONNECTIONS\n");
 				break;
 			case ID_INVALID_PASSWORD:
-				printf(": Network : ID_INVALID_PASSWORD\n");
+				printf(" : Network : ID_INVALID_PASSWORD\n");
 				break;
 			case ID_CONNECTION_LOST:
 				// Couldn't deliver a reliable packet - i.e. the other system was abnormally
 				// terminated
-				printf(": Network : ID_CONNECTION_LOST\n");
+				printf(" : Network : ID_CONNECTION_LOST\n");
 				break;
 			case ID_CONNECTED_PING:
 			case ID_UNCONNECTED_PING:
-				printf(": Network : Ping from %s\n", p->systemAddress.ToString(true));
+				printf(" : Network : Ping from %s\n", p->systemAddress.ToString(true));
 				break;
 			}
 
@@ -344,6 +353,6 @@ void NetworkManager::CheckPackets()
 		}		
 
 		// Keep raknet threads responsive
-		RakSleep(30);	
+		RakSleep(10);	
 	}
 }
