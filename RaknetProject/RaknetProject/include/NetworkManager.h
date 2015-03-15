@@ -7,12 +7,14 @@
 #include "Rand.h"
 #include "RakPeerInterface.h"
 #include "MessageIdentifiers.h"
+#include "RPC4Plugin.h"
 #include "ReadyEvent.h"
 #include "Kbhit.h"
 #include "RakSleep.h"
 #include "SocketLayer.h"
 #include "FullyConnectedMesh2.h"
 #include "ConnectionGraph2.h"
+#include "Gets.h"
 
 using namespace RakNet;
 
@@ -73,10 +75,17 @@ public:
 
 	bool IsHost() { return bIsHost; }
 	
+	// Registered RPC call when a player is booted
+	static void KickedFromServerRPC(BitStream *_bitStream, Packet *_packet);
+	// Called at set intervals, for rpc testing
+	static void IntervalTickRPC(BitStream *_bitStream, Packet *_packet);
+	
 	// Close and shutdown the servers
 	void Destroy();
 
 private:
+	// RPC plugin handler
+	RPC4 rpc;
 
 	// List of addresses connected to host
 	SystemAddress remoteSystems[MAX_CONNECTIONS];

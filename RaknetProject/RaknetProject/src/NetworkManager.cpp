@@ -10,16 +10,37 @@ NetworkManager::NetworkManager()
 	printf(" - Networking enabled - .\n");
 }
 
+// Registered RPC call when a player is booted
+void NetworkManager::KickedFromServerRPC(BitStream *_bitStream, Packet *_packet)
+{
+	std::cout << " You were kicked from the server.\0";
+	RakPeerInterface *rakPeerTemp = RakPeerInterface::GetInstance();
+	rakPeerTemp->Shutdown(100);
+}
+// Called at set intervals, for rpc testing
+void NetworkManager::IntervalTickRPC(BitStream *_bitStream, Packet *_packet)
+{
+	std::cout << " Interval tick RPC called.\0";
+}
+
 void NetworkManager::Init(bool _isHost)
 {
 	bIsHost = _isHost;
 	rakPeer = RakPeerInterface::GetInstance();
 	
+	// Attach plugins
 	rakPeer->AttachPlugin(&readyEventPlugin);
+	rakPeer->SetMaximumIncomingConnections(MAX_CONNECTIONS);
 	rakPeer->AttachPlugin(&FCM2);
 	rakPeer->AttachPlugin(&connectedGraph2);
-	rakPeer->SetMaximumIncomingConnections(MAX_CONNECTIONS);
+	rakPeer->AttachPlugin(&rpc);
 	
+	// Setup RPC functions
+	rpc.RegisterSlot("Kicked", KickedFromServerRPC, 0);
+	rpc.RegisterSlot("Interval", IntervalTickRPC, 0);
+	//rpc.RegisterBlockingFunction("Blocking", CFunc3);
+	
+	// Setup fully connected mesh
 	FCM2.SetAutoparticipateConnections(true);
 	FCM2.SetConnectOnNewRemoteConnection(true, "");
 	connectedGraph2.SetAutoProcessNewConnections(true);
@@ -37,32 +58,26 @@ void NetworkManager::Init(bool _isHost)
 	RakSleep(100);
 }
 
-void NetworkManager::Destroy()
-{
-	if(rakPeer)
-	{
-		rakPeer->Shutdown(100,0);
-		RakPeerInterface::DestroyInstance(rakPeer);
-	}
-}
-
+// Connects to target IP
 bool NetworkManager::EstablishConnection(const char _ip[])
 {
 	ConnectionAttemptResult car;
 	if (bIsHost == true)
 	{
 		car = rakPeer->Connect("127.0.0.1", PORT, 0, 0, 0);
+		std::cout << " : Network : Hosting game..." << std::endl;
 	}
 	else
 	{
-		car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		//car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
+		std::cout << " : Network : Attempting to connect to " << _ip << "..." << std::endl;
 		// Temp line for faster testing on my home PC
-		// car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 		// Temp line for testing on school pc
 		// car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
-	std::cout << " : Network : Attempting to connect to " << _ip << "..." << std::endl;
+
 	return true;
 }
 
@@ -97,7 +112,7 @@ void NetworkManager::PeerToPeerMessage(std::string _name, GameMessages _messageT
 	}
 }
 
-
+// Change the target event state to the bool passed in
 void NetworkManager::SetEventState(GameMessages _event, bool _isReady)
 {
 	readyEventPlugin.SetEvent(_event,_isReady);
@@ -337,5 +352,14 @@ void NetworkManager::CheckPackets()
 
 		// Keep raknet threads responsive
 		RakSleep(10);	
+	}
+}
+
+void NetworkManager::Destroy()
+{
+	if(rakPeer)
+	{
+		rakPeer->Shutdown(100,0);
+		RakPeerInterface::DestroyInstance(rakPeer);
 	}
 }
