@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <string>
+#include <iostream>
 #include "GetTime.h"
 #include "Rand.h"
 #include "RakPeerInterface.h"
@@ -14,7 +15,6 @@
 #include "ConnectionGraph2.h"
 
 using namespace RakNet;
-class GameManager;
 
 // NOTE - We must still ignore (MessageID) when reading in our bit streams
 // or else data will not be properly parsed. This is an oddity of Raknet.
@@ -34,17 +34,6 @@ enum GameMessages
 	ID_GAME_OVER = ID_TO_CLIENT_MESSAGE + 11
 };
 
-// Stores information for each submitted answer each round
-struct AnswerInfo
-{
-	// Store the last card they submitted
-	int submittedAnswer;
-	// Store the address this answer came from
-	SystemAddress address;
-	// Stores their name
-	std::string playerName;
-};
-
 class NetworkManager
 {
 private:
@@ -53,12 +42,10 @@ private:
 	static const unsigned int PORT = 60000;
 
 public:
-	// Stores player info regarding address, name, score, etc
-	AnswerInfo answerInfo[MAX_CONNECTIONS];
 	// Access the list of machines connected to the host
 	SystemAddress GetConnectedMachine(int _playerNum);
 	
-	NetworkManager(GameManager* _game);
+	NetworkManager();
 	~NetworkManager() { Destroy(); }
 
 	// Fire up raknet with apps and connection settings
@@ -83,34 +70,24 @@ public:
 	void SetEventState(GameMessages _event, bool _isReady);
 	// Get number of systems connected
 	unsigned short GetNumberOfConnections() { return numberOfSystems; }
-	unsigned short GetNumberOfAnswers() { return totalAnswersReceived; }
+
 	bool IsHost() { return bIsHost; }
 	
 	// Close and shutdown the servers
 	void Destroy();
 
 private:
-	// Add a players answer information to answer array
-	void AddAnswerInfo(int _cardVal, std::string _name, SystemAddress _address);
 
 	// List of addresses connected to host
 	SystemAddress remoteSystems[MAX_CONNECTIONS];
 	unsigned short numberOfSystems;
-	GameManager* game;
-	
-	
-	// Tracks how many answers have been submitted
-	int totalAnswersReceived;
-	// Track the current question asker
-	int currentQuestionAsker;
+
 	// Has the game started - no more joiners
 	bool bGameStarted;
 	// Is this the host machine
 	bool bIsHost;
 	// Is the new round ready to start
 	bool bIsNewRoundReady;
-	// Has the sent card event happened
-	bool bIsCardSent;
 
 	// Raknet variables - key to standard networking, event system, and connected graph
 	RakPeerInterface *rakPeer;

@@ -70,12 +70,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
-    <ClCompile Include="src\GameManager.cpp" />
     <ClCompile Include="src\NetworkManager.cpp" />
     <ClCompile Include="src\XMLScriptManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\GameManager.h" />
     <ClInclude Include="include\NetworkManager.h" />
     <ClInclude Include="include\XMLScriptManager.h" />
   </ItemGroup>

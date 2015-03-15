@@ -1,15 +1,10 @@
 #include "NetworkManager.h"
-#include "GameManager.h"
 
-NetworkManager::NetworkManager(GameManager* _game) 
+NetworkManager::NetworkManager() 
 	: rakPeer(0), 
 	bIsHost(false),
 	bGameStarted(false),
-	bIsNewRoundReady(false),
-	bIsCardSent(false),
-	game(_game),
-	totalAnswersReceived(0),
-	currentQuestionAsker(-1)
+	bIsNewRoundReady(false)
 
 {
 	printf(" - Networking enabled - .\n");
@@ -51,14 +46,6 @@ void NetworkManager::Destroy()
 	}
 }
 
-void NetworkManager::AddAnswerInfo(int _cardVal, std::string _name, SystemAddress _address)
-{
-	answerInfo[totalAnswersReceived].submittedAnswer = _cardVal;
-	answerInfo[totalAnswersReceived].playerName = _name;
-	answerInfo[totalAnswersReceived].address = _address;
-	totalAnswersReceived++;
-}
-
 bool NetworkManager::EstablishConnection(const char _ip[])
 {
 	ConnectionAttemptResult car;
@@ -75,7 +62,7 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 		// car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
-	printout << " : Network : Attempting to connect to " << _ip << "..." endline
+	std::cout << " : Network : Attempting to connect to " << _ip << "..." << std::endl;
 	return true;
 }
 
@@ -101,10 +88,6 @@ void NetworkManager::PeerToPeerMessage(std::string _name, GameMessages _messageT
 	
 	if (_broadcast == true)
 	{
-		if (_messageType == ID_SEND_ANSWER_CARD)
-		{
-			AddAnswerInfo(_cardValue, _name, _address);
-		}
 		assert(_messageType != ID_ASSIGN_QUESTION_ASKER_NO_BROADCAST);
 		rakPeer->Send(&bsOut,HIGH_PRIORITY,RELIABLE_ORDERED,0,UNASSIGNED_SYSTEM_ADDRESS,true);
 	}
@@ -151,7 +134,7 @@ void NetworkManager::CheckPackets()
 			RakNet::BitStream bitStream(p->data, p->length, false);
 			switch (p->data[0])
 			{
-			// Custom defined events
+	/*		// Custom defined events
 			// A player has won the game
 			case ID_GAME_OVER:
 				looping = false;
@@ -199,7 +182,7 @@ void NetworkManager::CheckPackets()
 					bitStream.IgnoreBytes(sizeof(MessageID));
 					bitStream.Read(cardVal);
 					bitStream.Read(playerName);
-					printout << ": Network : " << playerName << " is ready to play." endline
+					std::cout << ": Network : " << playerName << " is ready to play." << std::endl;
 				}
 				break;
 			// When receiving the start next round message (should broadcast from host)
@@ -214,13 +197,13 @@ void NetworkManager::CheckPackets()
 				break;
 			// Below are RakNet events
 			case ID_NEW_INCOMING_CONNECTION:
-				printout << ": Network : A player has joined." endline
+				std::cout << ": Network : A player has joined." << std::endl;
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 				readyEventPlugin.AddToWaitList(ID_READY_FOR_NEXT_ROUND, p->guid);
 				break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
-				printout << ": Network : Joining game..." endline
+				std::cout << ": Network : Joining game..." << std::endl;
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
 				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
 				readyEventPlugin.AddToWaitList(ID_READY_FOR_NEXT_ROUND, p->guid);
@@ -236,7 +219,7 @@ void NetworkManager::CheckPackets()
 					if (bGameStarted == false)
 					{
 						system("cls");
-						printout << ": Network :  \\('^')/ Let the game being!" endline
+						std::cout << ": Network :  \\('^')/ Let the game being!" << std::endl;
 						bGameStarted = true;
 						if (bIsHost)
 						{
@@ -297,7 +280,7 @@ void NetworkManager::CheckPackets()
 					}
 					break;
 				}
-				break;
+				break;*/
 
 			case ID_READY_EVENT_SET:
 				break;
