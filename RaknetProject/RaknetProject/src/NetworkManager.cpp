@@ -81,6 +81,13 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	return true;
 }
 
+void NetworkManager::KickPlayer(SystemAddress _target)
+{
+	RakNet::BitStream testBs;
+	testBs.WriteCompressed("testData");
+//	rpc.Signal("Event1", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetSystemAddressFromIndex(0),false, true);
+}
+
 // List the IP addresses of my system
 void NetworkManager::ListIP()
 {

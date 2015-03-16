@@ -56,6 +56,8 @@ public:
 	bool EstablishConnection(const char _ip[]);
 	// List IP addresses
 	void ListIP();
+	// Called to kick a target player
+	void KickPlayer(SystemAddress _target);
 	// Packet checking is done here
 	void CheckPackets();
 	/* Request the networking send a peer to peer message
