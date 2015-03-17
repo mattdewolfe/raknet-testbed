@@ -30,6 +30,17 @@ int main(void)
 
 	// Start up network packet listening thread
 	networkUpdates = new std::thread(&NetworkManager::CheckPackets, network);
+	getchar();
+
+	int i = 0;
+	while (i < 100000)
+	{
+		i++;
+		if (i%10000 == 0)
+			network->Tick();
+	}
+	
+	network->KickPlayer(0);
 
 	getchar();
 }

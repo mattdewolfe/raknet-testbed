@@ -13,14 +13,14 @@ NetworkManager::NetworkManager()
 // Registered RPC call when a player is booted
 void NetworkManager::KickedFromServerRPC(BitStream *_bitStream, Packet *_packet)
 {
-	std::cout << " You were kicked from the server.\0";
+	std::cout << " You were kicked from the server.\n";
 	RakPeerInterface *rakPeerTemp = RakPeerInterface::GetInstance();
 	rakPeerTemp->Shutdown(100);
 }
 // Called at set intervals, for rpc testing
 void NetworkManager::IntervalTickRPC(BitStream *_bitStream, Packet *_packet)
 {
-	std::cout << " Interval tick RPC called.\0";
+	std::cout << " Interval tick RPC called.\n";
 }
 
 void NetworkManager::Init(bool _isHost)
@@ -81,13 +81,25 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 	return true;
 }
 
-void NetworkManager::KickPlayer(SystemAddress _target)
+void NetworkManager::Tick()
 {
-	RakNet::BitStream testBs;
-	testBs.WriteCompressed("testData");
-//	rpc.Signal("Event1", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetSystemAddressFromIndex(0),false, true);
+	if (bIsHost)
+	{
+		RakNet::BitStream testBs;
+		testBs.WriteCompressed("testData");
+		rpc.Signal("Interval", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true, true);
+	}
 }
 
+void NetworkManager::KickPlayer(int _playerNum)
+{
+	if (bIsHost)
+	{
+		RakNet::BitStream testBs;
+		testBs.WriteCompressed("testData");
+		rpc.Signal("Kicked", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[_playerNum],false, false);
+	}
+}
 // List the IP addresses of my system
 void NetworkManager::ListIP()
 {

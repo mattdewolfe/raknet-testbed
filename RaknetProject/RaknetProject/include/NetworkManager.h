@@ -57,7 +57,9 @@ public:
 	// List IP addresses
 	void ListIP();
 	// Called to kick a target player
-	void KickPlayer(SystemAddress _target);
+	void KickPlayer(int _playerNum);
+	// Called on host for tick event
+	void Tick();
 	// Packet checking is done here
 	void CheckPackets();
 	/* Request the networking send a peer to peer message
