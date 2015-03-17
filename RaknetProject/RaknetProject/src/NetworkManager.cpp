@@ -4,7 +4,8 @@ NetworkManager::NetworkManager()
 	: rakPeer(0), 
 	bIsHost(false),
 	bGameStarted(false),
-	bIsNewRoundReady(false)
+	bIsNewRoundReady(false),
+	remoteSystemCount(0)
 
 {
 	printf(" - Networking enabled - .\n");
@@ -17,10 +18,35 @@ void NetworkManager::KickedFromServerRPC(BitStream *_bitStream, Packet *_packet)
 	RakPeerInterface *rakPeerTemp = RakPeerInterface::GetInstance();
 	rakPeerTemp->Shutdown(100);
 }
+
+// Registered RPC Blocking function for player activity
+void NetworkManager::CheckPlayerActiveRPC(BitStream *_bitStream, RakNet::BitStream *_returnData, Packet *_packet)
+{
+	printf("Server: Activity test.\n");
+	bool activeState = false;
+	_returnData->Write(activeState);
+}
+
 // Called at set intervals, for rpc testing
 void NetworkManager::IntervalTickRPC(BitStream *_bitStream, Packet *_packet)
 {
-	std::cout << " Interval tick RPC called.\n";
+	int playerCount;
+	int offset= _bitStream->GetReadOffset();
+	bool read = _bitStream->Read(playerCount);
+	assert(read);
+	if (playerCount < 1)
+	{
+		std::cout << " There are no connected players.\n";
+	}
+	else if (playerCount == 1)
+	{
+		std::cout << " There is 1 player connected.\n";
+	}
+	else
+	{
+		std::cout << " There are " << playerCount << " players connected.\n";
+	}
+
 }
 
 void NetworkManager::Init(bool _isHost)
@@ -38,7 +64,7 @@ void NetworkManager::Init(bool _isHost)
 	// Setup RPC functions
 	rpc.RegisterSlot("Kicked", KickedFromServerRPC, 0);
 	rpc.RegisterSlot("Interval", IntervalTickRPC, 0);
-	//rpc.RegisterBlockingFunction("Blocking", CFunc3);
+	rpc.RegisterBlockingFunction("CheckActive", CheckPlayerActiveRPC);
 	
 	// Setup fully connected mesh
 	FCM2.SetAutoparticipateConnections(true);
@@ -72,22 +98,39 @@ bool NetworkManager::EstablishConnection(const char _ip[])
 		//car = rakPeer->Connect(_ip, PORT, 0, 0, 0);
 		std::cout << " : Network : Attempting to connect to " << _ip << "..." << std::endl;
 		// Temp line for faster testing on my home PC
-		car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
+		//car = rakPeer->Connect("192.168.0.102", PORT, 0, 0, 0);
 		// Temp line for testing on school pc
-		// car = rakPeer->Connect("10.10.107.141", PORT, 0, 0, 0);
+		car = rakPeer->Connect("10.10.106.72", PORT, 0, 0, 0);
 	}
 	RakAssert(car==CONNECTION_ATTEMPT_STARTED);
 
 	return true;
 }
 
+bool NetworkManager::CheckActivePlayer(int _playerNum)
+{
+	if (bIsHost)
+	{
+		// Needs 2 program instances, because while the call is blocking rakPeer2->Receive() isn't getting called
+		RakNet::BitStream blockingReturn;
+		RakNet::BitStream Bs;
+		rpc.CallBlocking("CheckActive", &Bs, HIGH_PRIORITY,RELIABLE_ORDERED,0,GetConnectedMachine(_playerNum),&blockingReturn);
+
+		// Wait for return info, then read in to see if player is active
+		RakNet::RakString data;
+		bool active;
+		blockingReturn.Read(active);
+		return active;
+	}
+}
+
 void NetworkManager::Tick()
 {
 	if (bIsHost)
 	{
-		RakNet::BitStream testBs;
-		testBs.WriteCompressed("testData");
-		rpc.Signal("Interval", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true, true);
+		RakNet::BitStream Bs;
+		Bs.Write(remoteSystemCount+1);
+		rpc.Signal("Interval", &Bs, HIGH_PRIORITY,RELIABLE_ORDERED,0,rakPeer->GetMyBoundAddress(),true, true);
 	}
 }
 
@@ -96,8 +139,8 @@ void NetworkManager::KickPlayer(int _playerNum)
 	if (bIsHost)
 	{
 		RakNet::BitStream testBs;
-		testBs.WriteCompressed("testData");
-		rpc.Signal("Kicked", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,remoteSystems[_playerNum],false, false);
+		testBs.Write("testData");
+		rpc.Signal("Kicked", &testBs, HIGH_PRIORITY,RELIABLE_ORDERED,0,GetConnectedMachine(_playerNum),false, false);
 	}
 }
 // List the IP addresses of my system
@@ -230,12 +273,10 @@ void NetworkManager::CheckPackets()
 				game->StartNextRound(cardVal);
 				break;
 			// Below are RakNet events
-			case ID_NEW_INCOMING_CONNECTION:
+			*/case ID_NEW_INCOMING_CONNECTION:
 				std::cout << ": Network : A player has joined." << std::endl;
-				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);
-				readyEventPlugin.AddToWaitList(ID_SEND_ANSWER_CARD, p->guid);
-				readyEventPlugin.AddToWaitList(ID_READY_FOR_NEXT_ROUND, p->guid);
-				break;
+				remoteSystemCount++;
+			/*	break;
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 				std::cout << ": Network : Joining game..." << std::endl;
 				readyEventPlugin.AddToWaitList(ID_READY_TO_PLAY, p->guid);

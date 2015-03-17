@@ -2,9 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <thread>
+#include <ctime>
 #include "include\NetworkManager.h"
 
-int main(void)
+int main(int args,char* argv[])
 {
 	char ip[64];
 	
@@ -30,18 +31,28 @@ int main(void)
 
 	// Start up network packet listening thread
 	networkUpdates = new std::thread(&NetworkManager::CheckPackets, network);
-	getchar();
 
-	int i = 0;
-	while (i < 100000)
+	clock_t startTime = clock(); //Start timer
+	double secondsPassed;
+	double secondsToDelay = 3.00f;
+	bool isLooping = true;
+	int ticks = 5;
+	// Basic 3 second loop
+	while(ticks > 0)
 	{
-		i++;
-		if (i%10000 == 0)
+		secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
+		if(secondsPassed >= secondsToDelay)
+		{
+			secondsToDelay+=3.00f;
+			ticks--;
 			network->Tick();
+		}
+	}
+	if (network->CheckActivePlayer(1) == false)
+	{
+		network->KickPlayer(1);
 	}
 	
-	network->KickPlayer(0);
-
 	getchar();
 }
 /*

@@ -60,6 +60,8 @@ public:
 	void KickPlayer(int _playerNum);
 	// Called on host for tick event
 	void Tick();
+	// Called on host to check a players activitey
+	bool CheckActivePlayer(int _playerNum);
 	// Packet checking is done here
 	void CheckPackets();
 	/* Request the networking send a peer to peer message
@@ -83,7 +85,8 @@ public:
 	static void KickedFromServerRPC(BitStream *_bitStream, Packet *_packet);
 	// Called at set intervals, for rpc testing
 	static void IntervalTickRPC(BitStream *_bitStream, Packet *_packet);
-	
+	// Call when server pings a players activity state - BLOCKING
+	static void CheckPlayerActiveRPC(BitStream *_bitStream, RakNet::BitStream *_returnData,  Packet *packet);
 	// Close and shutdown the servers
 	void Destroy();
 
@@ -95,6 +98,8 @@ private:
 	SystemAddress remoteSystems[MAX_CONNECTIONS];
 	unsigned short numberOfSystems;
 
+	// Local tracking value for connections
+	int remoteSystemCount;
 	// Has the game started - no more joiners
 	bool bGameStarted;
 	// Is this the host machine
